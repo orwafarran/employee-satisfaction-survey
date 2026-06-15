@@ -1,0 +1,117 @@
+{
+  "title": "Employee Satisfaction Survey",
+  "intro": "This survey gathers how you feel about your role, your team, your managers, growth opportunities, and overall satisfaction, so we can build a better workplace. All responses are confidential — your identity is not linked to your answers.",
+  "scale": [
+    { "value": 1, "label": "Strongly Disagree", "short": "SD" },
+    { "value": 2, "label": "Disagree", "short": "D" },
+    { "value": 3, "label": "Agree", "short": "A" },
+    { "value": 4, "label": "Strongly Agree", "short": "SA" }
+  ],
+  "themes": [
+    {
+      "id": "I",
+      "title": "Actualization of Company Mission & Vision",
+      "questions": [
+        { "id": 1, "text": "The Company clearly conveys its mission to its employees." },
+        { "id": 2, "text": "The Company clearly conveys the mission to its clients." },
+        { "id": 3, "text": "I agree with the Company's overall mission." },
+        { "id": 4, "text": "I understand how my job aligns with the Company's mission." },
+        { "id": 5, "text": "I feel like I am a part of the Company." }
+      ]
+    },
+    {
+      "id": "II",
+      "title": "Effectiveness of Communication",
+      "questions": [
+        { "id": 6, "text": "There is good communication from employees to managers in the Company." },
+        { "id": 7, "text": "There is good communication from managers to employees in the Company." },
+        { "id": 8, "text": "People in my department communicate sufficiently with one another." }
+      ]
+    },
+    {
+      "id": "III",
+      "title": "Fulfillment of Training Needs",
+      "questions": [
+        { "id": 9, "text": "My job gives me the opportunity to learn." },
+        { "id": 10, "text": "I have the tools and resources I need to do my job." },
+        { "id": 11, "text": "I have the training I need to do my job." }
+      ]
+    },
+    {
+      "id": "IV",
+      "title": "Job Satisfaction",
+      "questions": [
+        { "id": 12, "text": "I receive the right amount of recognition for my work." },
+        { "id": 13, "text": "I am aware of the advancement opportunities that exist in the Company for me." },
+        { "id": 14, "text": "I feel well utilized in my job." },
+        { "id": 15, "text": "The amount of work expected of me is reasonable." },
+        { "id": 16, "text": "It is easy to get along with my colleagues." },
+        { "id": 17, "text": "The morale in my department is high." }
+      ]
+    },
+    {
+      "id": "V",
+      "title": "Supervisor's Leadership Skills",
+      "questions": [
+        { "id": 18, "text": "Overall, my supervisor does a good job." },
+        { "id": 19, "text": "My supervisor actively listens to my suggestions." },
+        { "id": 20, "text": "My supervisor enables me to perform at my best." },
+        { "id": 21, "text": "My supervisor promotes an atmosphere of teamwork." },
+        { "id": 22, "text": "It is clear to me what my supervisor expects of me regarding my job performance." },
+        { "id": 23, "text": "My supervisor evaluates my work performance on a regular basis." },
+        { "id": 24, "text": "My supervisor provides me with actionable suggestions on what I can do to improve." },
+        { "id": 25, "text": "When I have questions or concerns, my supervisor is able to address them." }
+      ]
+    },
+    {
+      "id": "VI",
+      "title": "Salary & Benefits",
+      "questions": [
+        { "id": 26, "text": "I feel that my salary package matches my workload." },
+        { "id": 27, "text": "There is regular improvement in my salary (increment)." },
+        { "id": 28, "text": "I am satisfied with the transportation allowance/services provided by the company." },
+        { "id": 29, "text": "I am satisfied with the accommodation allowance/services provided by the company." }
+      ]
+    },
+    {
+      "id": "VII",
+      "title": "Employee Services",
+      "questions": [
+        { "id": 30, "text": "I am satisfied with the welfare activities implemented by the company." },
+        { "id": 31, "text": "I am satisfied with the services of the medical insurance." },
+        { "id": 32, "text": "I am satisfied with the attention and assistance of the HR & Admin Department." }
+      ]
+    },
+    {
+      "id": "VIII",
+      "title": "Long-Term Perspective with the Company",
+      "questions": [
+        { "id": 33, "text": "I will refer my friends to work in the company." },
+        { "id": 34, "text": "I am confident to serve long years with the company." },
+        { "id": 35, "text": "I am proud to be part of the company." }
+      ]
+    }
+  ],
+  "demographics": [
+    {
+      "key": "department",
+      "label": "Department",
+      "options": ["Production", "QA/QC", "Planning", "Design", "Erection", "Maintenance", "Service & Control"]
+    },
+    {
+      "key": "length_of_service",
+      "label": "Length of Service",
+      "options": ["Less than a year", "1-2 Years", "3-5 Years", "5-10 Years", "Above 10 Years"]
+    },
+    {
+      "key": "age_band",
+      "label": "Age",
+      "options": ["20-25", "26-30", "31-35", "36-40", "Above 40"]
+    },
+    {
+      "key": "gender",
+      "label": "Gender",
+      "options": ["Male", "Female"]
+    }
+  ]
+}
