@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Local database & runtime data (never commit confidential responses)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Environment / secrets
+.env
+.env.local
+
+# OS / editor noise
+.DS_Store
+*.log
+npm-debug.log*
+
+# The source Excel may contain real (confidential) results — keep it out of any public repo.
+Employee Satisfaction Results.xlsx
+_client_real_data.json
+
+# Internal build spec — operator keeps locally, not for the public repo
+EmployeeSurvey_BuildSpec_for_CD.md
+
+# Local Claude Code tooling config
+.claude/

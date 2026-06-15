@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Admin Dashboard — Employee Satisfaction Survey</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d7d72'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial'%3E%E2%98%B0%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <div id="demo-ribbon"></div>
+
+  <header class="topbar admin-topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">☰</span>
+        <span>Survey Admin <small style="font-weight:500;opacity:.8">· Dashboard</small></span>
+      </div>
+      <div class="admin-actions" id="admin-actions" hidden>
+        <button class="btn btn-sm" id="copy-link-btn">🔗 Copy survey link</button>
+        <button class="btn btn-sm" id="toggle-status-btn">Close survey</button>
+        <button class="btn btn-sm" id="export-xlsx-btn">⬇ Excel</button>
+        <button class="btn btn-sm" id="export-pdf-btn">⬇ PDF</button>
+        <button class="btn btn-sm" id="logout-btn">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LOGIN -->
+  <main class="login-wrap" id="login-view" hidden>
+    <div class="card">
+      <h1>Admin sign in</h1>
+      <p class="sub">Private dashboard — authorized staff only.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign in</button>
+        <div class="login-error" id="login-error" hidden>Invalid username or password.</div>
+      </form>
+      <div class="demo-creds" id="demo-creds" hidden></div>
+    </div>
+  </main>
+
+  <!-- DASHBOARD -->
+  <main class="page wide" id="dash-view" hidden>
+    <div id="closed-banner" class="banner banner-warn" hidden>
+      🔒 The survey is currently <strong>closed</strong> — the public form is not accepting new responses.
+    </div>
+
+    <div class="live-row">
+      <span class="live-dot" id="live-dot" title="Live — auto-refreshing"></span>
+      <span class="live-count"><span class="n" id="live-n">0</span><span class="lbl" id="live-lbl">responses so far</span></span>
+      <span class="chip chip-open" id="status-chip">Open</span>
+      <span style="color:var(--muted);font-size:12.5px;margin-left:auto" id="updated-at"></span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis" id="kpis"></div>
+
+    <!-- Tabs -->
+    <div class="tabs" role="tablist" aria-label="Dashboard views">
+      <button class="tab active" id="tab-btn-themes" role="tab" aria-selected="true" aria-controls="tab-themes" data-tab="themes">Themes</button>
+      <button class="tab" id="tab-btn-questions" role="tab" aria-selected="false" aria-controls="tab-questions" data-tab="questions">Questions</button>
+      <button class="tab" id="tab-btn-demographics" role="tab" aria-selected="false" aria-controls="tab-demographics" data-tab="demographics">Respondents</button>
+      <button class="tab" id="tab-btn-responses" role="tab" aria-selected="false" aria-controls="tab-responses" data-tab="responses">Individual responses</button>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <!-- Themes -->
+    <section class="tabpane active" id="tab-themes" role="tabpanel" aria-labelledby="tab-btn-themes" tabindex="0">
+      <div class="section-head">
+        <h2>Theme scores</h2>
+        <p>Each donut rolls up all questions in the theme. The bar shows the positive rate (Agree + Strongly Agree).</p>
+      </div>
+      <div class="donut-grid" id="theme-grid"></div>
+    </section>
+
+    <!-- Questions -->
+    <section class="tabpane" id="tab-questions" role="tabpanel" aria-labelledby="tab-btn-questions" tabindex="0">
+      <div class="section-head">
+        <h2>Every question</h2>
+        <p>Distribution across the 4-point scale for each of the 35 questions, grouped by theme.</p>
+      </div>
+      <div id="question-groups"></div>
+    </section>
+
+    <!-- Demographics -->
+    <section class="tabpane" id="tab-demographics" role="tabpanel" aria-labelledby="tab-btn-demographics" tabindex="0">
+      <div class="section-head">
+        <h2>Who responded</h2>
+        <p>Anonymous, grouped breakdowns by department, length of service, age and gender.</p>
+      </div>
+      <div class="demo-charts" id="demo-charts"></div>
+    </section>
+
+    <!-- Individual responses -->
+    <section class="tabpane" id="tab-responses" role="tabpanel" aria-labelledby="tab-btn-responses" tabindex="0">
+      <div class="section-head">
+        <h2>Individual responses</h2>
+        <p>Read any single submission in full. No names — every response is anonymous.</p>
+      </div>
+      <div class="card table-wrap">
+        <table class="responses">
+          <thead>
+            <tr>
+              <th>#</th><th>Submitted</th><th>Department</th><th>Service</th>
+              <th>Age</th><th>Gender</th><th>Positive</th><th>Comment</th>
+            </tr>
+          </thead>
+          <tbody id="responses-tbody"></tbody>
+        </table>
+        <p id="no-responses" style="color:var(--muted);text-align:center;padding:24px" hidden>
+          No responses yet.
+        </p>
+      </div>
+    </section>
+
+    <div id="empty-state" class="card center-state" hidden>
+      <div class="big">📭</div>
+      <h2>No responses yet</h2>
+      <p>Charts and scores will appear here as employees submit the survey.</p>
+    </div>
+  </main>
+
+  <!-- Drill-down modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <h3 id="modal-title">Response</h3>
+        <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Vendored locally so the app and demo are fully self-contained (no runtime CDN). -->
+  <script src="lib/chart.umd.min.js"></script>
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="lib/jspdf.plugin.autotable.min.js"></script>
+  <script src="lib/xlsx.full.min.js"></script>
+
+  <script src="js/config.js"></script>
+  <script src="js/sample-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

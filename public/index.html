@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>Employee Satisfaction Survey</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d7d72'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='white' font-family='Arial'%3E%E2%9C%93%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="demo-ribbon"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">✓</span>
+        <span>Employee Satisfaction Survey</span>
+      </div>
+      <small id="status-chip"></small>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <div id="loading" class="center-state">
+      <div class="big">⏳</div>
+      <p>Loading the survey…</p>
+    </div>
+
+    <!-- Survey form (filled in by JS) -->
+    <form id="survey-form" hidden novalidate>
+      <section class="card intro">
+        <h1 id="survey-title">Employee Satisfaction Survey</h1>
+        <p id="survey-intro"></p>
+        <span class="confidential">🔒 <span>Anonymous — your identity is never linked to your answers.</span></span>
+      </section>
+
+      <div id="error-banner" class="banner banner-bad" role="alert" aria-live="assertive" tabindex="-1" hidden></div>
+
+      <div id="questions"></div>
+
+      <section class="card">
+        <div class="field">
+          <label for="comment">Comments &amp; Suggestions <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+          <textarea id="comment" name="comment" maxlength="4000" placeholder="Anything you'd like to add…"></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="font-size:16px;margin-bottom:6px;">A little about you</h2>
+        <p style="color:var(--muted);font-size:13.5px;margin:0 0 14px;">
+          Used only for grouped, anonymous breakdowns — never to identify you.
+        </p>
+        <div class="demo-grid" id="demographics"></div>
+      </section>
+    </form>
+
+    <!-- Closed state -->
+    <section id="closed-state" class="card center-state" hidden>
+      <div class="big">🔒</div>
+      <h2>This survey is now closed</h2>
+      <p>Thank you for your interest. New responses are no longer being accepted.</p>
+    </section>
+
+    <!-- Thank-you -->
+    <section id="thankyou" class="card center-state thankyou" hidden>
+      <div class="check">✓</div>
+      <h2>Thank you — your response has been recorded</h2>
+      <p>Your answers are confidential and anonymous. You may now close this page.</p>
+      <p id="thankyou-demo-note" style="margin-top:18px" hidden></p>
+    </section>
+  </main>
+
+  <!-- Sticky submit bar -->
+  <div class="submitbar" id="submitbar" hidden>
+    <div class="submitbar-inner">
+      <div class="progress" aria-hidden="true"><span id="progress-fill"></span></div>
+      <div class="progress-label" id="progress-label" aria-live="polite">0 / 35</div>
+      <button type="submit" form="survey-form" class="btn btn-primary" id="submit-btn">Submit</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <!-- DEMO_SAMPLE_INJECT -->
+  <script src="js/data.js"></script>
+  <script src="js/survey-form.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "employee-satisfaction-survey",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Employee Satisfaction Survey — public form + private admin dashboard. Local/full app (Express + node:sqlite) and a static GitHub Pages demo.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "seed": "node scripts/seed.js",
+    "seed:real": "node scripts/seed.js --real",
+    "build:demo": "node scripts/build-demo.js",
+    "reset": "node scripts/seed.js --reset"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "chart.js": "^4.4.3",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "xlsx": "^0.18.5"
+  }
+}
