@@ -18,8 +18,13 @@ const session = require('express-session');
 const helmet = require('helmet');
 
 const db = require('./db');
-const { survey, validateResponse } = require('./survey');
+const { baseSurvey, buildEffective, SurveyConfig, validateResponse } = require('./survey');
 const { provider, requireAdmin } = require('./auth');
+
+// Effective survey content = base + any admin overrides persisted in the DB.
+function effectiveSurvey() {
+  return buildEffective(db.getOverrides());
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -88,7 +93,7 @@ app.use(
 // Survey content + current status (used by both the form and the dashboard).
 app.get('/api/survey', (req, res) => {
   res.json({
-    content: survey,
+    content: effectiveSurvey(),
     status: db.getSurveyStatus(),
     headcount: parseHeadcount(),
   });
@@ -99,7 +104,7 @@ app.post('/api/responses', (req, res) => {
   if (db.getSurveyStatus() === 'closed') {
     return res.status(409).json({ error: 'survey_closed' });
   }
-  const result = validateResponse(req.body);
+  const result = validateResponse(req.body, effectiveSurvey());
   if (!result.ok) {
     return res.status(400).json({ error: 'validation_failed', details: result.errors });
   }
@@ -202,6 +207,44 @@ app.post('/api/admin/survey-status', requireAdmin, (req, res) => {
   }
   const status = db.setSurveyStatus(requested);
   res.json({ ok: true, status });
+});
+
+// --- Survey configuration: add/remove questions & departments --------------
+
+app.post('/api/admin/questions', requireAdmin, (req, res) => {
+  const { themeId, text } = req.body || {};
+  if (!themeId || typeof text !== 'string' || text.trim().length < 3) {
+    return res.status(400).json({ error: 'invalid_question' });
+  }
+  if (!baseSurvey.themes.some((t) => String(t.id) === String(themeId))) {
+    return res.status(400).json({ error: 'unknown_theme' });
+  }
+  const { result, id } = SurveyConfig.addQuestion(baseSurvey, db.getOverrides(), themeId, text);
+  db.saveOverrides(result);
+  res.status(201).json({ ok: true, id });
+});
+
+app.delete('/api/admin/questions/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid_id' });
+  const eff = effectiveSurvey();
+  const count = eff.themes.reduce((n, t) => n + t.questions.length, 0);
+  if (count <= 1) return res.status(400).json({ error: 'last_question' });
+  db.saveOverrides(SurveyConfig.removeQuestion(baseSurvey, db.getOverrides(), id));
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/departments', requireAdmin, (req, res) => {
+  const name = ((req.body && req.body.name) || '').trim();
+  if (!name) return res.status(400).json({ error: 'invalid_department' });
+  db.saveOverrides(SurveyConfig.addDepartment(baseSurvey, db.getOverrides(), name));
+  res.status(201).json({ ok: true });
+});
+
+app.delete('/api/admin/departments/:name', requireAdmin, (req, res) => {
+  const name = decodeURIComponent(req.params.name);
+  db.saveOverrides(SurveyConfig.removeDepartment(baseSurvey, db.getOverrides(), name));
+  res.json({ ok: true });
 });
 
 // ===========================================================================

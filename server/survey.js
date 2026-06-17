@@ -3,39 +3,55 @@
 /**
  * Survey definition loader + response validator.
  *
- * The survey content lives in ONE place — public/survey-content.json — so the
- * browser form and the server validate against an identical definition. This
- * module reads that file and exposes helpers used by the API routes.
+ * The base survey content lives in ONE place — public/survey-content.json — so
+ * the browser form and the server validate against an identical definition.
+ * Admin edits (added/removed questions, departments) are stored as an overrides
+ * delta (see public/js/survey-config.js) and applied on top of the base to get
+ * the EFFECTIVE survey. Validation always runs against the effective survey, so
+ * a freshly added question is required and a removed one is rejected.
  */
 
 const fs = require('fs');
 const path = require('path');
+const SurveyConfig = require('../public/js/survey-config.js');
 
 const CONTENT_PATH = path.join(__dirname, '..', 'public', 'survey-content.json');
 
-const survey = JSON.parse(fs.readFileSync(CONTENT_PATH, 'utf8'));
+const baseSurvey = JSON.parse(fs.readFileSync(CONTENT_PATH, 'utf8'));
 
-// Flat list of question ids, in order (1..35).
-const QUESTION_IDS = survey.themes.flatMap((t) => t.questions.map((q) => q.id));
-const QUESTION_ID_SET = new Set(QUESTION_IDS);
-const SCALE_VALUES = new Set(survey.scale.map((s) => s.value));
-
-// Allowed option values for each demographic field.
-const DEMOGRAPHIC_OPTIONS = Object.fromEntries(
-  survey.demographics.map((d) => [d.key, new Set(d.options)])
-);
-const DEMOGRAPHIC_KEYS = survey.demographics.map((d) => d.key);
+// Base flat list of question ids (db.js re-exports these; per-request the
+// effective list is recomputed from the current overrides).
+const QUESTION_IDS = baseSurvey.themes.flatMap((t) => t.questions.map((q) => q.id));
+const DEMOGRAPHIC_KEYS = baseSurvey.demographics.map((d) => d.key);
 
 const COMMENT_MAX = 4000;
 
+/** Effective survey content = base + admin overrides. */
+function buildEffective(overrides) {
+  return SurveyConfig.apply(baseSurvey, overrides);
+}
+
 /**
- * Validate a submitted response payload.
- * Default policy (per spec §4): all 35 ratings required, all demographics
- * required, comment optional.
+ * Validate a submitted response payload against the effective survey.
+ * Default policy (spec §4): all ratings required, all demographics required,
+ * comment optional.
  *
+ * @param {object} payload
+ * @param {object} [effective]  effective survey content (defaults to base)
  * @returns {{ok: true, value: object} | {ok: false, errors: string[]}}
  */
-function validateResponse(payload) {
+function validateResponse(payload, effective) {
+  const content = effective || baseSurvey;
+
+  const questionIds = [];
+  content.themes.forEach((t) => t.questions.forEach((q) => questionIds.push(Number(q.id))));
+  const questionIdSet = new Set(questionIds);
+  const scaleValues = new Set(content.scale.map((s) => s.value));
+  const demographicKeys = content.demographics.map((d) => d.key);
+  const demographicOptions = Object.fromEntries(
+    content.demographics.map((d) => [d.key, new Set(d.options)])
+  );
+
   const errors = [];
 
   if (!payload || typeof payload !== 'object') {
@@ -48,12 +64,12 @@ function validateResponse(payload) {
   if (!answers || typeof answers !== 'object') {
     errors.push('Missing "answers".');
   } else {
-    for (const qid of QUESTION_IDS) {
+    for (const qid of questionIds) {
       const raw = answers[qid] ?? answers[String(qid)];
       const val = Number(raw);
       if (raw === undefined || raw === null || raw === '') {
         errors.push(`Question ${qid} is unanswered.`);
-      } else if (!Number.isInteger(val) || !SCALE_VALUES.has(val)) {
+      } else if (!Number.isInteger(val) || !scaleValues.has(val)) {
         errors.push(`Question ${qid} has an invalid answer.`);
       } else {
         cleanAnswers[qid] = val;
@@ -61,7 +77,7 @@ function validateResponse(payload) {
     }
     // Reject unknown question ids (defensive).
     for (const key of Object.keys(answers)) {
-      if (!QUESTION_ID_SET.has(Number(key))) {
+      if (!questionIdSet.has(Number(key))) {
         errors.push(`Unknown question "${key}".`);
       }
     }
@@ -69,11 +85,11 @@ function validateResponse(payload) {
 
   // --- Demographics (all required) ------------------------------------------
   const demographics = {};
-  for (const key of DEMOGRAPHIC_KEYS) {
+  for (const key of demographicKeys) {
     const val = payload[key];
     if (val === undefined || val === null || val === '') {
       errors.push(`Demographic "${key}" is required.`);
-    } else if (!DEMOGRAPHIC_OPTIONS[key].has(val)) {
+    } else if (!demographicOptions[key].has(val)) {
       errors.push(`Demographic "${key}" has an invalid value.`);
     } else {
       demographics[key] = val;
@@ -103,7 +119,10 @@ function validateResponse(payload) {
 }
 
 module.exports = {
-  survey,
+  survey: baseSurvey, // back-compat alias
+  baseSurvey,
+  buildEffective,
+  SurveyConfig,
   QUESTION_IDS,
   DEMOGRAPHIC_KEYS,
   validateResponse,

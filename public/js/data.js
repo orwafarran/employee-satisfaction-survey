@@ -93,6 +93,37 @@
       });
       return ok ? { ok: true, status: body.status } : { ok: false };
     },
+
+    // --- Survey configuration (admin) -------------------------------------
+    async addQuestion({ themeId, text }) {
+      const { ok, body } = await jsonFetch('/api/admin/questions', {
+        method: 'POST',
+        body: JSON.stringify({ themeId, text }),
+      });
+      return ok ? { ok: true, id: body.id } : { ok: false, error: body && body.error };
+    },
+
+    async deleteQuestion(id) {
+      const { ok } = await jsonFetch('/api/admin/questions/' + encodeURIComponent(id), {
+        method: 'DELETE',
+      });
+      return { ok };
+    },
+
+    async addDepartment(name) {
+      const { ok, body } = await jsonFetch('/api/admin/departments', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      return ok ? { ok: true } : { ok: false, error: body && body.error };
+    },
+
+    async deleteDepartment(name) {
+      const { ok } = await jsonFetch('/api/admin/departments/' + encodeURIComponent(name), {
+        method: 'DELETE',
+      });
+      return { ok };
+    },
   };
 
   // -------------------------------------------------------------------------
@@ -101,6 +132,7 @@
   const LS_KEYS = {
     extra: 'ess_demo_extra_responses',
     status: 'ess_demo_status',
+    overrides: 'ess_survey_overrides',
   };
 
   const DemoBackend = {
@@ -131,15 +163,55 @@
       return localStorage.getItem(LS_KEYS.status) === 'closed' ? 'closed' : 'open';
     },
 
+    _overrides() {
+      try {
+        return JSON.parse(localStorage.getItem(LS_KEYS.overrides) || 'null');
+      } catch (_) {
+        return null;
+      }
+    },
+
+    _saveOverrides(o) {
+      localStorage.setItem(LS_KEYS.overrides, JSON.stringify(o));
+    },
+
     _allResponses() {
       const base = (window.DEMO_SAMPLE && window.DEMO_SAMPLE.responses) || [];
       return base.concat(this._extra());
     },
 
     async getSurvey() {
-      const content = await this._loadContent();
+      const base = await this._loadContent();
+      const content =
+        window.SurveyConfig ? window.SurveyConfig.apply(base, this._overrides()) : base;
       const headcount = (window.DEMO_SAMPLE && window.DEMO_SAMPLE.headcount) || null;
       return { content, status: this._status(), headcount };
+    },
+
+    // --- Survey configuration (admin) — persisted in localStorage ---------
+    async addQuestion({ themeId, text }) {
+      const base = await this._loadContent();
+      const { result, id } = window.SurveyConfig.addQuestion(base, this._overrides(), themeId, text);
+      this._saveOverrides(result);
+      return { ok: true, id };
+    },
+
+    async deleteQuestion(id) {
+      const base = await this._loadContent();
+      this._saveOverrides(window.SurveyConfig.removeQuestion(base, this._overrides(), id));
+      return { ok: true };
+    },
+
+    async addDepartment(name) {
+      const base = await this._loadContent();
+      this._saveOverrides(window.SurveyConfig.addDepartment(base, this._overrides(), name));
+      return { ok: true };
+    },
+
+    async deleteDepartment(name) {
+      const base = await this._loadContent();
+      this._saveOverrides(window.SurveyConfig.removeDepartment(base, this._overrides(), name));
+      return { ok: true };
     },
 
     async submitResponse(payload) {
@@ -200,6 +272,7 @@
     resetDemo() {
       localStorage.removeItem(LS_KEYS.extra);
       localStorage.removeItem(LS_KEYS.status);
+      localStorage.removeItem(LS_KEYS.overrides);
     },
   };
 

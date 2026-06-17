@@ -21,6 +21,8 @@
       <div class="admin-actions" id="admin-actions" hidden>
         <button class="btn btn-sm" id="copy-link-btn">🔗 Copy survey link</button>
         <button class="btn btn-sm" id="toggle-status-btn">Close survey</button>
+        <button class="btn btn-sm" id="manage-questions-btn">➕ Add more questions</button>
+        <button class="btn btn-sm" id="manage-depts-btn">🏢 Add more departments</button>
         <button class="btn btn-sm" id="export-xlsx-btn">⬇ Excel</button>
         <button class="btn btn-sm" id="export-pdf-btn">⬇ PDF</button>
         <button class="btn btn-sm" id="logout-btn">Sign out</button>
@@ -88,7 +90,7 @@
     <section class="tabpane" id="tab-questions" role="tabpanel" aria-labelledby="tab-btn-questions" tabindex="0">
       <div class="section-head">
         <h2>Every question</h2>
-        <p>Distribution across the 4-point scale for each of the 35 questions, grouped by theme.</p>
+        <p>Distribution across the 4-point scale for each question, grouped by theme.</p>
       </div>
       <div id="question-groups"></div>
     </section>
@@ -142,6 +144,17 @@
     </div>
   </div>
 
+  <!-- Manage modal (questions / departments) -->
+  <div class="modal-backdrop" id="manage-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manage-title">
+      <div class="modal-head">
+        <h3 id="manage-title">Manage</h3>
+        <button class="modal-close" id="manage-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="manage-body"></div>
+    </div>
+  </div>
+
   <!-- Vendored locally so the app and demo are fully self-contained (no runtime CDN). -->
   <script src="lib/chart.umd.min.js"></script>
   <script src="lib/jspdf.umd.min.js"></script>
@@ -150,6 +163,7 @@
 
   <script src="js/config.js"></script>
   <!-- DEMO_SAMPLE_INJECT -->
+  <script src="js/survey-config.js"></script>
   <script src="js/data.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/charts.js"></script>

@@ -74,6 +74,24 @@ function setSurveyStatus(status) {
   return normalized;
 }
 
+// --- Survey config overrides (admin-added/removed questions, departments) ---
+// Stored as one JSON blob in settings. Shape matches public/js/survey-config.js.
+
+function getOverrides() {
+  const raw = getSetting('survey_overrides', null);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveOverrides(overrides) {
+  setSetting('survey_overrides', JSON.stringify(overrides || {}));
+  return overrides;
+}
+
 // --- Responses --------------------------------------------------------------
 
 const insertStmt = db.prepare(`
@@ -156,6 +174,8 @@ module.exports = {
   setSetting,
   getSurveyStatus,
   setSurveyStatus,
+  getOverrides,
+  saveOverrides,
   // responses
   insertResponse,
   getResponseById,

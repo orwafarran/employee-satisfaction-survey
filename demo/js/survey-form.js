@@ -138,8 +138,14 @@
     return n;
   }
 
+  function totalQuestions() {
+    let n = 0;
+    content.themes.forEach((t) => (n += t.questions.length));
+    return n;
+  }
+
   function updateProgress() {
-    const total = 35;
+    const total = totalQuestions() || 1;
     const n = answeredCount();
     const pct = Math.round((n / total) * 100);
     $('progress-fill').style.width = pct + '%';
