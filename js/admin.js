@@ -395,11 +395,13 @@
     }
   }
 
-  // Keep Tab focus inside the open dialog.
+  // Keep Tab focus inside whichever dialog is open.
   function trapModalFocus(e) {
-    if (e.key !== 'Tab' || !$('modal-backdrop').classList.contains('open')) return;
-    const focusables = $('modal-backdrop').querySelectorAll(
-      'button, [href], [tabindex]:not([tabindex="-1"])'
+    if (e.key !== 'Tab') return;
+    const open = document.querySelector('.modal-backdrop.open');
+    if (!open) return;
+    const focusables = open.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
     if (!focusables.length) return;
     const first = focusables[0];
@@ -411,6 +413,180 @@
       e.preventDefault();
       first.focus();
     }
+  }
+
+  // -------------------------------------------------------------------------
+  //  Manage survey configuration (add / remove questions & departments)
+  // -------------------------------------------------------------------------
+
+  // Re-fetch the (possibly edited) survey content, rebuild the question index,
+  // and recompute every chart/score so edits show up live on the dashboard.
+  async function reloadSurveyContent() {
+    const survey = await api.getSurvey();
+    state.content = survey.content;
+    state.questionIndex = {};
+    Scoring.flatQuestions(state.content).forEach((q) => {
+      state.questionIndex[q.id] = { text: q.text, themeId: q.themeId };
+    });
+    await loadAndRender(false);
+  }
+
+  function openManageModal(title) {
+    $('manage-title').textContent = title;
+    state.manageReturnFocus = document.activeElement;
+    $('manage-backdrop').classList.add('open');
+    $('manage-close').focus();
+  }
+
+  function closeManageModal() {
+    if (!$('manage-backdrop').classList.contains('open')) return;
+    $('manage-backdrop').classList.remove('open');
+    if (state.manageReturnFocus && state.manageReturnFocus.focus) {
+      state.manageReturnFocus.focus();
+      state.manageReturnFocus = null;
+    }
+  }
+
+  // ---- Questions ----------------------------------------------------------
+  function renderManageQuestions() {
+    const themeOpts = state.content.themes
+      .map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.id)}. ${escapeHtml(t.title)}</option>`)
+      .join('');
+
+    let total = 0;
+    const groups = state.content.themes
+      .map((theme) => {
+        const rows = theme.questions
+          .map((q) => {
+            total++;
+            const tag = q.custom ? '<span class="mr-tag">added</span>' : '';
+            return `<li class="manage-row">
+              <span class="mr-id">Q${q.id}</span>
+              <span class="mr-text">${escapeHtml(q.text)} ${tag}</span>
+              <button class="mr-del" data-del-q="${q.id}" aria-label="Delete question ${q.id}">Delete</button>
+            </li>`;
+          })
+          .join('');
+        return `<div class="manage-group">${escapeHtml(theme.id)}. ${escapeHtml(theme.title)}</div><ul class="manage-list">${rows}</ul>`;
+      })
+      .join('');
+
+    $('manage-body').innerHTML = `
+      <p class="manage-intro">Add a question to any theme, or remove one. Changes apply to the employee form and the dashboard right away. <strong>${total}</strong> questions currently.</p>
+      <div class="manage-add">
+        <select id="mq-theme" class="grow" aria-label="Theme">${themeOpts}</select>
+        <textarea id="mq-text" class="grow" placeholder="Type the new question…" maxlength="300"></textarea>
+        <button class="btn btn-primary" id="mq-add">Add question</button>
+      </div>
+      <div class="manage-err" id="mq-err" hidden></div>
+      ${groups}`;
+
+    $('mq-add').addEventListener('click', addQuestionFromForm);
+    $('manage-body')
+      .querySelectorAll('[data-del-q]')
+      .forEach((btn) => btn.addEventListener('click', () => deleteQuestionById(btn.getAttribute('data-del-q'))));
+  }
+
+  async function addQuestionFromForm() {
+    const themeId = $('mq-theme').value;
+    const text = $('mq-text').value.trim();
+    const err = $('mq-err');
+    if (text.length < 5) {
+      err.textContent = 'Please type a question (at least 5 characters).';
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    const btn = $('mq-add');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+    const r = await api.addQuestion({ themeId, text });
+    if (!r.ok) {
+      err.textContent = 'Could not add the question. Please try again.';
+      err.hidden = false;
+      btn.disabled = false;
+      btn.textContent = 'Add question';
+      return;
+    }
+    await reloadSurveyContent();
+    renderManageQuestions();
+  }
+
+  async function deleteQuestionById(id) {
+    if (Scoring.flatQuestions(state.content).length <= 1) {
+      window.alert('At least one question is required.');
+      return;
+    }
+    if (!window.confirm('Remove this question? It will disappear from the employee form.')) return;
+    await api.deleteQuestion(id);
+    await reloadSurveyContent();
+    renderManageQuestions();
+  }
+
+  // ---- Departments --------------------------------------------------------
+  function deptField() {
+    return state.content.demographics.find((d) => d.key === 'department');
+  }
+
+  function renderManageDepartments() {
+    const dept = deptField();
+    const list = dept ? dept.options : [];
+    const rows =
+      list
+        .map(
+          (name) => `<li class="manage-row">
+            <span class="mr-text">${escapeHtml(name)}</span>
+            <button class="mr-del" data-del-d="${escapeHtml(name)}" aria-label="Delete ${escapeHtml(name)}">Delete</button>
+          </li>`
+        )
+        .join('') || '<li class="manage-empty">No departments yet — add the first one above.</li>';
+
+    $('manage-body').innerHTML = `
+      <p class="manage-intro">These are the departments employees can pick on the form. <strong>${list.length}</strong> currently.</p>
+      <div class="manage-add">
+        <input type="text" id="md-name" class="grow" placeholder="New department name…" maxlength="60" />
+        <button class="btn btn-primary" id="md-add">Add department</button>
+      </div>
+      <div class="manage-err" id="md-err" hidden></div>
+      <ul class="manage-list">${rows}</ul>`;
+
+    $('md-add').addEventListener('click', addDepartmentFromForm);
+    $('md-name').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addDepartmentFromForm();
+      }
+    });
+    $('manage-body')
+      .querySelectorAll('[data-del-d]')
+      .forEach((btn) => btn.addEventListener('click', () => deleteDepartmentByName(btn.getAttribute('data-del-d'))));
+  }
+
+  async function addDepartmentFromForm() {
+    const name = $('md-name').value.trim();
+    const err = $('md-err');
+    if (!name) {
+      err.textContent = 'Please type a department name.';
+      err.hidden = false;
+      return;
+    }
+    const dept = deptField();
+    if (dept && dept.options.some((o) => o.toLowerCase() === name.toLowerCase())) {
+      err.textContent = 'That department already exists.';
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    await api.addDepartment(name);
+    await reloadSurveyContent();
+    renderManageDepartments();
+  }
+
+  async function deleteDepartmentByName(name) {
+    if (!window.confirm(`Remove "${name}" from the department list?`)) return;
+    await api.deleteDepartment(name);
+    await reloadSurveyContent();
+    renderManageDepartments();
   }
 
   // -------------------------------------------------------------------------
@@ -450,9 +626,28 @@
     $('modal-backdrop').addEventListener('click', (e) => {
       if (e.target === $('modal-backdrop')) closeModal();
     });
+
+    // Manage (questions / departments) modal.
+    $('manage-questions-btn').addEventListener('click', () => {
+      openManageModal('Add / remove questions');
+      renderManageQuestions();
+    });
+    $('manage-depts-btn').addEventListener('click', () => {
+      openManageModal('Add / remove departments');
+      renderManageDepartments();
+    });
+    $('manage-close').addEventListener('click', closeManageModal);
+    $('manage-backdrop').addEventListener('click', (e) => {
+      if (e.target === $('manage-backdrop')) closeManageModal();
+    });
+
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeModal();
-      else trapModalFocus(e);
+      if (e.key === 'Escape') {
+        closeModal();
+        closeManageModal();
+      } else {
+        trapModalFocus(e);
+      }
     });
 
     $('logout-btn').addEventListener('click', async () => {

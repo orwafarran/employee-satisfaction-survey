@@ -96,7 +96,7 @@
     {
       "key": "department",
       "label": "Department",
-      "options": ["Production", "QA/QC", "Planning", "Design", "Erection", "Maintenance", "Service & Control"]
+      "options": ["Production", "QA/QC", "Planning", "Design", "Erection", "Maintenance", "Service & Control", "Factory's Precast", "Sites", "QS", "Design & Technical", "Sales & Marketing", "Logistics", "HR & Admin", "Finance", "HSE", "Block Factory", "Polystyrene Factory", "IT", "Stores", "Development", "Project Control"]
     },
     {
       "key": "length_of_service",
