@@ -757,12 +757,12 @@
     if (sel.innerHTML !== want) sel.innerHTML = want;
     sel.value = state.histYear || '';
   }
-  function populateMonthFilter(series) {
+  function populateMonthFilter() {
     const sel = $('hist-month');
-    const months = [...new Set(series.map(monthOf))].sort((a, b) => a - b);
+    // Always offer all 12 months so the admin can pick any period.
     const want =
       '<option value="">All months</option>' +
-      months.map((m) => `<option value="${m}">${MONTH_NAMES[m]}</option>`).join('');
+      MONTH_NAMES.slice(1).map((name, i) => `<option value="${i + 1}">${name}</option>`).join('');
     if (sel.innerHTML !== want) sel.innerHTML = want;
     sel.value = state.histMonth || '';
   }
