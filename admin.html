@@ -23,36 +23,13 @@
         <button class="btn btn-sm" id="toggle-status-btn">Close survey</button>
         <button class="btn btn-sm" id="manage-questions-btn">➕ Add more questions</button>
         <button class="btn btn-sm" id="manage-depts-btn">🏢 Add more departments</button>
+        <button class="btn btn-sm" id="settings-btn">⚙ Settings</button>
         <button class="btn btn-sm" id="export-xlsx-btn">⬇ Excel</button>
         <button class="btn btn-sm" id="export-pdf-btn">⬇ PDF</button>
         <button class="btn btn-sm" id="logout-btn">Sign out</button>
       </div>
     </div>
   </header>
-
-  <!-- FIRST-RUN SETUP -->
-  <main class="login-wrap" id="setup-view" hidden>
-    <div class="card">
-      <h1>Welcome — set up your admin login</h1>
-      <p class="sub">One-time setup. Create the login you'll use to open this dashboard. Keep it private — only you should have it.</p>
-      <form id="setup-form">
-        <div class="field">
-          <label for="setup-email">Your email</label>
-          <input type="email" id="setup-email" name="email" autocomplete="username" placeholder="you@company.com" required />
-        </div>
-        <div class="field">
-          <label for="setup-password">Choose a password <span style="color:var(--muted);font-weight:500">(at least 8 characters)</span></label>
-          <input type="password" id="setup-password" name="password" autocomplete="new-password" required />
-        </div>
-        <div class="field">
-          <label for="setup-password2">Confirm password</label>
-          <input type="password" id="setup-password2" name="password2" autocomplete="new-password" required />
-        </div>
-        <button type="submit" class="btn btn-primary btn-block" id="setup-btn">Create account &amp; sign in</button>
-        <div class="login-error" id="setup-error" hidden></div>
-      </form>
-    </div>
-  </main>
 
   <!-- LOGIN -->
   <main class="login-wrap" id="login-view" hidden>
@@ -77,6 +54,11 @@
 
   <!-- DASHBOARD -->
   <main class="page wide" id="dash-view" hidden>
+    <div id="default-login-banner" class="banner banner-warn" hidden>
+      ⚠️ You're signed in with the default login (<strong>admin / admin</strong>).
+      Click <strong>⚙ Settings</strong> above to set your own email and password.
+    </div>
+
     <div id="closed-banner" class="banner banner-warn" hidden>
       🔒 The survey is currently <strong>closed</strong> — the public form is not accepting new responses.
     </div>
