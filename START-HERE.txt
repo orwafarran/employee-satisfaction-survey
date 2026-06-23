@@ -1,5 +1,14 @@
+************************************************************
+  SETTING IT UP ONLINE ON MICROSOFT AZURE?  ->  open INSTALL.md
+  (That is the recommended setup.)
+
+  This file (START-HERE) is ONLY for the optional version
+  that runs on one Windows PC over the office network.
+************************************************************
+
+
 ============================================================
- EMPLOYEE SATISFACTION SURVEY  —  HOW TO START (Windows)
+ EMPLOYEE SATISFACTION SURVEY  —  HOW TO START (Windows PC)
 ============================================================
 
 You only need to do STEP 1 one time. After that, it is just
@@ -65,8 +74,8 @@ double-click and go.
  IMPORTANT
 ------------------------------------------------------------
  * Staff must be on the SAME office network/Wi-Fi as this PC
-   to open the link. (If some staff are remote, tell Orwa and
-   we will host it online instead.)
+   to open the link. For staff who work outside the office,
+   use the ONLINE (Azure) setup instead - see INSTALL.md.
  * Answers are anonymous - no names are ever collected.
 
  Need help? Contact Orwa.

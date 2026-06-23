@@ -14,13 +14,21 @@ on. Follow it once; after that the admin just uses a web link.
 
 ---
 
-## What you need first
+## Before you start — what you need
 
-1. An **Azure subscription** (part of the company's Microsoft account).
-2. This **code** — either the GitHub repo, or this folder as a ZIP.
+1. **An Azure subscription.** You sign in to Azure with your normal **Microsoft 365
+   account** (the same email you use for Outlook). If the company has never used
+   Azure, the first time you'll be asked to **create a subscription** — this needs a
+   payment method, because Azure is pay-as-you-go. A small survey costs roughly
+   **$20–30 / month** (the web app + the database).
+2. **This code** — this folder (you'll upload it in Part D), or its GitHub repository.
+3. **About 30–45 minutes**, and some comfort with the Azure portal. **If that's not
+   you, hand this guide to whoever manages the company's Microsoft 365 / IT** — or
+   ask Orwa to do it with you. (It is a one-time setup; after it, the admin only ever
+   opens a web link.)
 
-The app needs two Azure pieces: a **database** (stores the answers) and a **web
-app** (runs the survey). We create both, then connect them.
+The app needs two Azure pieces: a **database** (stores the answers) and a **web app**
+(runs the survey). You create both, then connect them.
 
 ---
 
@@ -87,22 +95,29 @@ password has special characters (`@ : / ? #`), URL-encode them (e.g. `@` → `%4
 
 ---
 
-## Part D — Deploy the code
+## Part D — Put the code on the web app
 
-**Easiest — from GitHub:**
+Pick **one** of these.
 
-1. Web App → **Deployment** → **Deployment Center**.
-2. **Source:** GitHub → authorize → pick the repository and the `main` branch.
-3. **Save.** Azure builds it (`npm install`) and starts it (`npm start`)
-   automatically. Wait for the first deployment to finish (a few minutes).
+**Option 1 — from this folder, no GitHub needed (ZIP upload):**
 
-**Alternative — ZIP deploy:** if you don't use GitHub, zip this folder
-(without `node_modules`) and use **Deployment Center → drag-and-drop ZIP**, or
-the Azure CLI: `az webapp deploy --resource-group <rg> --name <app> --src-path app.zip`.
+1. Make a **ZIP of this folder** — but **delete the `node_modules` folder first**
+   (Azure rebuilds it; it just makes the upload huge).
+2. In a browser, go to **`https://<your-app-name>.scm.azurewebsites.net/ZipDeployUI`**
+   (your Part B app name, with `.scm` in the middle) and sign in with your Microsoft
+   account.
+3. **Drag the ZIP** onto that page. Azure installs and starts the app (a few minutes).
 
-> If the app doesn't respond after deploy, open **Settings → Configuration →
-> General settings**, set **Startup Command** to `node server/server.js`, and
-> restart.
+**Option 2 — from GitHub (auto-updates on future changes):**
+
+1. Put the code in a GitHub repository (or ask Orwa to share the existing one).
+2. Web App → **Deployment** → **Deployment Center** → **Source: GitHub** → authorize →
+   pick the repo and the **`main`** branch → **Save**.
+3. Azure builds (`npm install`) and starts it automatically. Wait a few minutes.
+
+> If the app doesn't respond after deploying, open Web App → **Settings →
+> Configuration → General settings**, set **Startup Command** to
+> `node server/server.js`, and **Restart**.
 
 ---
 
