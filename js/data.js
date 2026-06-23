@@ -292,8 +292,8 @@
       const r1 = scaleSummary(current, 0.1);
       const r2 = scaleSummary(current, 0.05);
       return [
-        { id: 1, label: 'Original survey (baseline)', archived_at: '2024-06-01T00:00:00.000Z', respondents: r1.respondents, summary: r1 },
-        { id: 2, label: 'Mid-year review', archived_at: '2025-06-01T00:00:00.000Z', respondents: r2.respondents, summary: r2 },
+        { id: 1, label: 'Original survey (baseline)', archived_at: '2024-01-15T00:00:00.000Z', respondents: r1.respondents, summary: r1 },
+        { id: 2, label: 'Mid-year review', archived_at: '2025-07-10T00:00:00.000Z', respondents: r2.respondents, summary: r2 },
       ];
     },
 
