@@ -54,6 +54,14 @@
       return { ok: true, id: body.id };
     },
 
+    async setup(email, password) {
+      const { ok, body } = await jsonFetch('/api/admin/setup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      return ok ? { ok: true, user: body.user } : { ok: false, error: body && body.error };
+    },
+
     async login(username, password) {
       const { ok, body } = await jsonFetch('/api/admin/login', {
         method: 'POST',
@@ -224,6 +232,11 @@
       return { ok: true, id, demo: true };
     },
 
+    // Demo never needs first-run setup.
+    async setup(email) {
+      return { ok: true, user: { username: email || 'admin', provider: 'demo' } };
+    },
+
     // Demo login is intentionally permissive (clearly labelled on screen).
     async login(username, password) {
       return { ok: true, user: { username: username || 'admin', provider: 'demo' } };
@@ -235,7 +248,11 @@
     },
 
     async getSession() {
-      return { authenticated: sessionStorage.getItem('ess_demo_auth') === '1', provider: 'demo' };
+      return {
+        authenticated: sessionStorage.getItem('ess_demo_auth') === '1',
+        provider: 'demo',
+        configured: true,
+      };
     },
 
     _markAuthed() {
