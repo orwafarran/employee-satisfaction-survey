@@ -54,8 +54,8 @@
       return { ok: true, id: body.id };
     },
 
-    async setup(email, password) {
-      const { ok, body } = await jsonFetch('/api/admin/setup', {
+    async updateAccount(email, password) {
+      const { ok, body } = await jsonFetch('/api/admin/account', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -232,9 +232,9 @@
       return { ok: true, id, demo: true };
     },
 
-    // Demo never needs first-run setup.
-    async setup(email) {
-      return { ok: true, user: { username: email || 'admin', provider: 'demo' } };
+    // Demo: account changes aren't persisted (clearly labelled in the form).
+    async updateAccount(email) {
+      return { ok: true, user: { username: email || 'admin', provider: 'demo' }, demo: true };
     },
 
     // Demo login is intentionally permissive (clearly labelled on screen).
@@ -251,7 +251,7 @@
       return {
         authenticated: sessionStorage.getItem('ess_demo_auth') === '1',
         provider: 'demo',
-        configured: true,
+        usingDefault: false,
       };
     },
 

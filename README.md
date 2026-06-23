@@ -35,7 +35,7 @@ For the client running the app on their own PC:
 
 1. Install **Node.js** once — <https://nodejs.org> → green **LTS** button → Next / Next / Install.
 2. Double-click **`start.bat`** in this folder. A window opens; the dashboard opens in the browser.
-3. **First run:** create your admin login (your email + a password). It's hashed and saved locally — no config files, no default password.
+3. **First run:** sign in with **`admin` / `admin`**, then open **⚙ Settings** and set your own login — your company (Microsoft) email + a password. The default stops working once you do.
 4. Click **Copy survey link** and email it to staff. The app starts **empty** and fills in **live** as answers arrive.
 
 Step-by-step guides for the (non-technical) client are in the folder:
@@ -58,10 +58,11 @@ npm run seed       # loads 44 sample responses (the client's real distribution)
 npm start          # http://localhost:3000/  and  http://localhost:3000/admin
 ```
 
-**Admin login** — the first time you open `/admin`, you create your own login
-(email + password). It's hashed with scrypt and stored in the local database;
-there is no default password and no config file to edit. After that, you just
-sign in. (Advanced/cloud deploys can still pre-seed `ADMIN_USERNAME` +
+**Admin login** — ships with a default login **`admin` / `admin`**. On first
+sign-in, open **⚙ Settings** and set your own username (your company / Microsoft
+email) and password; it's hashed with scrypt and stored in the local database,
+and the default immediately stops working. A warning banner reminds you until
+you do. (Advanced/cloud deploys can still pre-seed `ADMIN_USERNAME` +
 `ADMIN_PASSWORD_HASH` — see [Admin authentication](#admin-authentication).)
 
 ### Verify it works

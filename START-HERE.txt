@@ -22,21 +22,29 @@ double-click and go.
  Your dashboard opens automatically in the browser.
 
 ------------------------------------------------------------
- STEP 3:  Create your login (first time only)
+ STEP 3:  Sign in and set your own login (first time only)
 ------------------------------------------------------------
- The dashboard asks you to create your admin login.
- Type your email and a password (8+ characters). Done.
- Next time, you just sign in with the same email + password.
+ The first time, sign in with:
+       Username:  admin
+       Password:  admin
+
+ Then click the  "Settings"  button at the top of the
+ dashboard, type your REAL company email and a password of
+ your choice, and click Save.
+
+ From now on you sign in with YOUR email and password.
+ (Use your company Microsoft email - it is the same address
+  staff see when you send them the survey.)
 
 ------------------------------------------------------------
  STEP 4:  Send the survey to your staff
 ------------------------------------------------------------
- The black window shows a line like:
-      STAFF — email them this survey link:
+ In the dashboard, click  "Copy survey link" , then paste it
+ into a normal Outlook email to your staff and send it.
+ The black window also shows this same link, on the line:
+      STAFF - email them this survey link:
           http://192.168.x.x:3000/
- Copy that link (or click "Copy survey link" in the
- dashboard) and paste it into a normal Outlook email to
- your staff. When they open it, they answer the survey.
+ When staff open the link, they answer the survey.
 
 ------------------------------------------------------------
  WATCHING THE RESULTS
@@ -59,6 +67,6 @@ double-click and go.
  * Staff must be on the SAME office network/Wi-Fi as this PC
    to open the link. (If some staff are remote, tell Orwa and
    we will host it online instead.)
- * Answers are anonymous — no names are ever collected.
+ * Answers are anonymous - no names are ever collected.
 
  Need help? Contact Orwa.

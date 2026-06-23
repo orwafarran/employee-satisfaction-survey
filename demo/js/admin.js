@@ -28,60 +28,12 @@
     renderDemoRibbon();
     wireStaticUi();
     const session = await api.getSession();
+    state.usingDefault = !!session.usingDefault;
+    state.adminUser = session.user && session.user.username;
     if (session.authenticated) {
       await enterDashboard();
-    } else if (session.configured === false) {
-      showSetup();
     } else {
-      showLogin(session.provider);
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  //  First-run setup (create the single admin account)
-  // -------------------------------------------------------------------------
-  function showSetup() {
-    $('setup-view').hidden = false;
-    $('login-view').hidden = true;
-    $('dash-view').hidden = true;
-    $('admin-actions').hidden = true;
-    $('setup-form').addEventListener('submit', handleSetup);
-  }
-
-  async function handleSetup(e) {
-    e.preventDefault();
-    const err = $('setup-error');
-    err.hidden = true;
-    const email = $('setup-email').value.trim();
-    const pw = $('setup-password').value;
-    const pw2 = $('setup-password2').value;
-    if (pw.length < 8) {
-      err.textContent = 'Password must be at least 8 characters.';
-      err.hidden = false;
-      return;
-    }
-    if (pw !== pw2) {
-      err.textContent = 'The two passwords do not match.';
-      err.hidden = false;
-      return;
-    }
-    const btn = $('setup-btn');
-    btn.disabled = true;
-    btn.textContent = 'Creating…';
-    const r = await api.setup(email, pw);
-    if (r.ok) {
-      $('setup-view').hidden = true;
-      await enterDashboard();
-    } else {
-      err.textContent =
-        r.error === 'invalid_email'
-          ? 'Please enter a valid email address.'
-          : r.error === 'weak_password'
-          ? 'Password must be at least 8 characters.'
-          : 'Could not create the account. Please try again.';
-      err.hidden = false;
-      btn.disabled = false;
-      btn.textContent = 'Create account & sign in';
+      showLogin();
     }
   }
 
@@ -94,15 +46,19 @@
   // -------------------------------------------------------------------------
   //  Login
   // -------------------------------------------------------------------------
-  function showLogin(provider) {
+  function showLogin() {
     $('login-view').hidden = false;
     $('dash-view').hidden = true;
     $('admin-actions').hidden = true;
+    const box = $('demo-creds');
     if (api.isDemo) {
-      const box = $('demo-creds');
       box.hidden = false;
       box.innerHTML =
         '🎭 <strong>Demo</strong> — sign in with anything, e.g. <code>admin</code> / <code>demo</code>.';
+    } else if (state.usingDefault) {
+      box.hidden = false;
+      box.innerHTML =
+        '👋 <strong>First time?</strong> Sign in with <code>admin</code> / <code>admin</code>, then open <strong>⚙ Settings</strong> to set your own email &amp; password.';
     }
     $('login-form').addEventListener('submit', handleLogin);
   }
@@ -115,6 +71,7 @@
     btn.textContent = 'Signing in…';
     const result = await api.login($('username').value.trim(), $('password').value);
     if (result.ok) {
+      state.adminUser = result.user && result.user.username;
       $('login-view').hidden = true;
       await enterDashboard();
     } else {
@@ -130,6 +87,7 @@
   async function enterDashboard() {
     $('dash-view').hidden = false;
     $('admin-actions').hidden = false;
+    $('default-login-banner').hidden = !state.usingDefault;
 
     const survey = await api.getSurvey();
     state.content = survey.content;
@@ -640,6 +598,86 @@
     renderManageDepartments();
   }
 
+  // ---- Account (admin login) ---------------------------------------------
+  function renderAccountSettings() {
+    const demoNote = api.isDemo
+      ? '<p class="manage-intro">🎭 Demo — changes here are not saved.</p>'
+      : '';
+    const warn =
+      !api.isDemo && state.usingDefault
+        ? '<div class="manage-err" style="margin:0 0 14px">You are signed in with the default login (admin / admin). Set your own below.</div>'
+        : '';
+    $('manage-body').innerHTML = `
+      ${demoNote}
+      <p class="manage-intro">Set the email and password you'll use to sign in to this dashboard. Use your company (Microsoft) email — staff will recognise the survey you send them.</p>
+      ${warn}
+      <div class="field">
+        <label for="acc-email">Your email <span style="color:var(--muted);font-weight:500">(this becomes your username)</span></label>
+        <input type="email" id="acc-email" autocomplete="username" placeholder="you@company.com" />
+      </div>
+      <div class="field">
+        <label for="acc-pw">New password <span style="color:var(--muted);font-weight:500">(at least 8 characters)</span></label>
+        <input type="password" id="acc-pw" autocomplete="new-password" />
+      </div>
+      <div class="field">
+        <label for="acc-pw2">Confirm new password</label>
+        <input type="password" id="acc-pw2" autocomplete="new-password" />
+      </div>
+      <button class="btn btn-primary" id="acc-save">Save my login</button>
+      <span id="acc-feedback" style="margin-left:12px;font-weight:600"></span>
+      <div class="manage-err" id="acc-err" hidden></div>`;
+    if (state.adminUser && state.adminUser !== 'admin') $('acc-email').value = state.adminUser;
+    $('acc-save').addEventListener('click', handleSaveAccount);
+  }
+
+  async function handleSaveAccount() {
+    const email = $('acc-email').value.trim();
+    const pw = $('acc-pw').value;
+    const pw2 = $('acc-pw2').value;
+    const err = $('acc-err');
+    const fb = $('acc-feedback');
+    err.hidden = true;
+    fb.textContent = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = 'Please enter a valid email address.';
+      err.hidden = false;
+      return;
+    }
+    if (pw.length < 8) {
+      err.textContent = 'Password must be at least 8 characters.';
+      err.hidden = false;
+      return;
+    }
+    if (pw !== pw2) {
+      err.textContent = 'The two passwords do not match.';
+      err.hidden = false;
+      return;
+    }
+    const btn = $('acc-save');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const r = await api.updateAccount(email, pw);
+    btn.disabled = false;
+    btn.textContent = 'Save my login';
+    if (!r.ok) {
+      err.textContent =
+        r.error === 'invalid_email'
+          ? 'Please enter a valid email address.'
+          : r.error === 'weak_password'
+          ? 'Password must be at least 8 characters.'
+          : 'Could not save. Please try again.';
+      err.hidden = false;
+      return;
+    }
+    state.adminUser = r.user && r.user.username;
+    if (!r.demo) {
+      state.usingDefault = false;
+      $('default-login-banner').hidden = true;
+    }
+    fb.style.color = 'var(--ok)';
+    fb.textContent = r.demo ? '✓ (demo — not saved)' : '✓ Saved — use this next time you sign in.';
+  }
+
   // -------------------------------------------------------------------------
   //  Static UI wiring (tabs, buttons, modal)
   // -------------------------------------------------------------------------
@@ -686,6 +724,10 @@
     $('manage-depts-btn').addEventListener('click', () => {
       openManageModal('Add / remove departments');
       renderManageDepartments();
+    });
+    $('settings-btn').addEventListener('click', () => {
+      openManageModal('Settings — your admin login');
+      renderAccountSettings();
     });
     $('manage-close').addEventListener('click', closeManageModal);
     $('manage-backdrop').addEventListener('click', (e) => {

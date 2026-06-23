@@ -171,23 +171,6 @@ app.post('/api/admin/login', loginThrottle, (req, res) => {
   });
 });
 
-// First-run setup: create the single admin account (email + password). Only
-// works while no account exists yet; afterwards it's a no-op (409).
-app.post('/api/admin/setup', loginThrottle, (req, res) => {
-  if (provider.name !== 'local' || typeof provider.setup !== 'function') {
-    return res.status(400).json({ error: 'setup_unsupported' });
-  }
-  if (provider.isConfigured()) return res.status(409).json({ error: 'already_configured' });
-  const { email, password } = req.body || {};
-  const result = provider.setup(email, password);
-  if (!result.ok) return res.status(400).json({ error: result.error });
-  req.session.regenerate((err) => {
-    if (err) return res.status(500).json({ error: 'session_error' });
-    req.session.admin = result.user;
-    res.status(201).json({ ok: true, user: result.user });
-  });
-});
-
 app.post('/api/admin/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('ess.sid');
@@ -201,7 +184,7 @@ app.get('/api/admin/session', (req, res) => {
     authenticated: Boolean(admin),
     user: admin || null,
     provider: provider.name,
-    configured: typeof provider.isConfigured === 'function' ? provider.isConfigured() : true,
+    usingDefault: typeof provider.isDefault === 'function' ? provider.isDefault() : false,
   });
 });
 
@@ -227,6 +210,18 @@ app.get('/api/admin/responses', requireAdmin, (req, res) => {
     headcount: parseHeadcount(),
     responses: db.getAllResponses(),
   });
+});
+
+// Change the admin login (from Settings). Requires an active session.
+app.post('/api/admin/account', requireAdmin, (req, res) => {
+  if (provider.name !== 'local' || typeof provider.updateAccount !== 'function') {
+    return res.status(400).json({ error: 'unsupported' });
+  }
+  const { email, password } = req.body || {};
+  const result = provider.updateAccount(email, password);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  req.session.admin = result.user;
+  res.json({ ok: true, user: result.user });
 });
 
 // Close / reopen the survey.
