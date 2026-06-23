@@ -1,9 +1,13 @@
 # IT Deployment Guide — Employee Satisfaction Survey
 
+> ⚠️ **Superseded:** the client chose **Azure**, and the step-by-step deploy
+> guide now lives in **[`../INSTALL.md`](../INSTALL.md)** (Azure App Service +
+> Azure Database for PostgreSQL). This file is kept for background only.
+
 **Audience:** the client's IT person.
-**Status:** draft to finalize at **Phase 6**, once the Microsoft host is
-confirmed. The exact button-clicks depend on which host the client uses (Azure
-App Service / Azure Static Web Apps + a small API / an in-tenant option). The
+**Status:** background notes. The exact button-clicks depend on which host the
+client uses (Azure App Service / Azure Static Web Apps + a small API / an
+in-tenant option). The
 steps below are written for **Azure App Service**, the most common choice, and
 note where they differ.
 

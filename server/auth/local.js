@@ -38,13 +38,10 @@ function buildLocalProvider() {
   // Hash the built-in default once (scrypt is deliberately slow).
   const DEFAULT_HASH = hashPassword(DEFAULT_PASS);
 
-  const dbUser = () => db.getSetting(KEY_USER, null);
-  const dbHash = () => db.getSetting(KEY_HASH, null);
-
-  function creds() {
+  async function creds() {
     return {
-      user: dbUser() || envUser || DEFAULT_USER,
-      hash: dbHash() || envHash || DEFAULT_HASH,
+      user: (await db.getSetting(KEY_USER, null)) || envUser || DEFAULT_USER,
+      hash: (await db.getSetting(KEY_HASH, null)) || envHash || DEFAULT_HASH,
     };
   }
 
@@ -53,27 +50,27 @@ function buildLocalProvider() {
 
     /** Still on the built-in default login (admin/admin)? Used to nudge the
      *  admin to set a real one. */
-    isDefault() {
-      return !dbHash() && !envHash;
+    async isDefault() {
+      return !(await db.getSetting(KEY_HASH, null)) && !envHash;
     },
 
     /**
      * Change the admin login (called from Settings, requires an active session).
-     * @returns {{ok:true, user:object} | {ok:false, error:string}}
+     * @returns {Promise<{ok:true, user:object} | {ok:false, error:string}>}
      */
-    updateAccount(email, password) {
+    async updateAccount(email, password) {
       const e = String(email || '').trim();
       const p = String(password || '');
       if (!looksLikeEmail(e)) return { ok: false, error: 'invalid_email' };
       if (p.length < 8) return { ok: false, error: 'weak_password' };
-      db.setSetting(KEY_USER, e);
-      db.setSetting(KEY_HASH, hashPassword(p));
+      await db.setSetting(KEY_USER, e);
+      await db.setSetting(KEY_HASH, hashPassword(p));
       return { ok: true, user: { username: e, provider: 'local' } };
     },
 
-    /** @returns {{ok: boolean, user?: object}} */
-    verify(inputUsername, inputPassword) {
-      const c = creds();
+    /** @returns {Promise<{ok: boolean, user?: object}>} */
+    async verify(inputUsername, inputPassword) {
+      const c = await creds();
       const userOk =
         typeof inputUsername === 'string' &&
         inputUsername.trim().toLowerCase() === String(c.user).toLowerCase();

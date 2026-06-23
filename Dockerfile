@@ -11,8 +11,8 @@ RUN npm install --omit=dev
 # App source.
 COPY . .
 
-# The app stores its SQLite file here in single-file mode; for production prefer
-# a managed DB (see docs/IT-DEPLOYMENT-GUIDE.md) and set DB_PATH / DATABASE_URL.
+# SQLite single-file path, used only if DATABASE_URL is NOT set. On Azure set
+# DATABASE_URL to a managed Postgres (see INSTALL.md) — then this volume is unused.
 RUN mkdir -p /app/data
 VOLUME ["/app/data"]
 
@@ -20,9 +20,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# REQUIRED at runtime (the app refuses to start in production without them):
-#   -e SESSION_SECRET=<long random string>
-#   -e ADMIN_USERNAME=<admin user>
-#   -e ADMIN_PASSWORD_HASH=<output of: node scripts/hash-password.js "pw">
-# This fail-fast is intentional — it prevents an insecure default-credential boot.
+# Recommended runtime settings (see INSTALL.md):
+#   -e DATABASE_URL=postgresql://user:pass@host:5432/survey?sslmode=require
+#   -e PUBLIC_URL=https://<your-app-url>
+# The admin login defaults to admin/admin and is changed in the dashboard's
+# Settings on first sign-in; the session secret is generated and stored on first run.
 CMD ["node", "server/server.js"]

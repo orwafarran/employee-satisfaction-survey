@@ -12,9 +12,14 @@ codebase:
   drill-down, and one-click export to Excel / PDF.
 
 Built in the phases described in `EmployeeSurvey_BuildSpec_for_CD.md`. **Phases
-1–5 are complete and run locally with zero external services.** Phase 6
-(production deploy to the client's Microsoft cloud) is intentionally deferred
-until the host is confirmed — see [`docs/IT-DEPLOYMENT-GUIDE.md`](docs/IT-DEPLOYMENT-GUIDE.md).
+1–5 are complete and run locally with zero external services.** Going **online
+on Microsoft Azure** (Phase 6) is supported and documented — see
+[`INSTALL.md`](INSTALL.md).
+
+**Storage is pluggable:** the app uses a built-in **SQLite** file for local /
+company-server runs, and **PostgreSQL** automatically when `DATABASE_URL` is set
+(e.g. Azure Database for PostgreSQL). Same code, selected at startup — see
+[`server/db.js`](server/db.js).
 
 ---
 
@@ -43,7 +48,7 @@ Step-by-step guides for the (non-technical) client are in the folder:
 
 > **Network reality:** running on a local PC means staff reach the survey over the
 > **office network/Wi-Fi** while the PC is on. For staff outside the office, host it
-> online instead — see [`docs/IT-DEPLOYMENT-GUIDE.md`](docs/IT-DEPLOYMENT-GUIDE.md).
+> **online on Azure** instead — see [`INSTALL.md`](INSTALL.md).
 
 ---
 
@@ -186,9 +191,11 @@ public/                  Frontend (served by the app AND published as the static
   css/                   styles.css (shared) + admin.css (dashboard)
 server/
   server.js              Express app: API + static + sessions + security headers
-  db.js                  Storage (node:sqlite); ports to a managed DB at Phase 6
+  db.js                  Storage facade — picks a driver by DATABASE_URL
+  db/sqlite.js           SQLite driver (local / company server)
+  db/postgres.js         PostgreSQL driver (Azure)
   survey.js              Loads survey-content.json + validates submissions
-  auth/                  Pluggable auth: index, local (scrypt), entra (Phase 6 seam), hash
+  auth/                  Pluggable auth: index, local (admin/admin → Settings), entra seam, hash
 scripts/
   seed.js                Seed the DB with the sample data
   build-demo.js          Build the static /demo
@@ -196,9 +203,8 @@ scripts/
   verify-scoring.js      Assert scoring matches the client's Excel
   hash-password.js       Generate an admin password hash
   lib/sample-generator.js  Deterministic sample data (reproduces the real 84.4%)
-docs/
-  IT-DEPLOYMENT-GUIDE.md Phase 6 deployment steps (finalize once host is known)
-Dockerfile               Host-agnostic container for Phase 6
+INSTALL.md               Deploy online to Microsoft Azure (App Service + Postgres)
+Dockerfile               Container image (any container host)
 ```
 
 ---
