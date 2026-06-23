@@ -25,6 +25,7 @@
     viewingRound: null, // when set, the dashboard shows an archived round
     histChart: null,
     histYear: '',
+    histMonth: '',
   };
 
   let tabs = []; // populated in wireStaticUi
@@ -733,10 +734,19 @@
     state.rounds = rounds;
     const series = buildSeries(rounds);
     populateYearFilter(series);
-    const shown = filterByYear(series);
+    populateMonthFilter(series);
+    const shown = filterSeries(series);
     renderTrendChart(shown);
     renderComparisonTable(shown);
     renderRoundList(series);
+  }
+
+  const MONTH_NAMES = [
+    '', 'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  function monthOf(s) {
+    return new Date(s.date).getMonth() + 1; // 1–12
   }
 
   function populateYearFilter(series) {
@@ -747,9 +757,23 @@
     if (sel.innerHTML !== want) sel.innerHTML = want;
     sel.value = state.histYear || '';
   }
-  function filterByYear(series) {
-    if (!state.histYear) return series;
-    return series.filter((s) => String(yearOf(s)) === String(state.histYear) || s.live);
+  function populateMonthFilter(series) {
+    const sel = $('hist-month');
+    const months = [...new Set(series.map(monthOf))].sort((a, b) => a - b);
+    const want =
+      '<option value="">All months</option>' +
+      months.map((m) => `<option value="${m}">${MONTH_NAMES[m]}</option>`).join('');
+    if (sel.innerHTML !== want) sel.innerHTML = want;
+    sel.value = state.histMonth || '';
+  }
+  function filterSeries(series) {
+    if (!state.histYear && !state.histMonth) return series;
+    return series.filter((s) => {
+      if (s.live) return true; // keep the current point as a reference
+      if (state.histYear && String(yearOf(s)) !== String(state.histYear)) return false;
+      if (state.histMonth && String(monthOf(s)) !== String(state.histMonth)) return false;
+      return true;
+    });
   }
 
   function renderTrendChart(series) {
@@ -794,7 +818,8 @@
   function renderComparisonTable(series) {
     const table = $('hist-compare');
     if (!series.length) {
-      table.innerHTML = '<tbody><tr><td class="hist-empty">No rounds yet.</td></tr></tbody>';
+      const msg = state.histYear || state.histMonth ? 'No rounds in the selected period.' : 'No rounds yet.';
+      table.innerHTML = `<tbody><tr><td class="hist-empty">${msg}</td></tr></tbody>`;
       return;
     }
     const themes = series[series.length - 1].summary.perTheme;
@@ -922,6 +947,10 @@
     $('round-view-back').addEventListener('click', exitRoundView);
     $('hist-year').addEventListener('change', () => {
       state.histYear = $('hist-year').value;
+      renderHistory();
+    });
+    $('hist-month').addEventListener('change', () => {
+      state.histMonth = $('hist-month').value;
       renderHistory();
     });
 
