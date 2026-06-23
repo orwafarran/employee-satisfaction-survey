@@ -20,7 +20,14 @@
     questionIndex: {}, // id -> {text, themeId}
     activeTab: 'themes',
     renderedTabs: new Set(),
+    // History (archived survey rounds)
+    rounds: [],
+    viewingRound: null, // when set, the dashboard shows an archived round
+    histChart: null,
+    histYear: '',
   };
+
+  let tabs = []; // populated in wireStaticUi
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -120,6 +127,7 @@
   }
 
   async function loadAndRender(initial) {
+    if (state.viewingRound) return; // viewing an archived round — don't clobber it
     const payload = await api.getResponses();
     if (payload.unauthorized) {
       stopPolling();
@@ -132,35 +140,44 @@
     renderLiveRow();
     renderStatusControls();
 
-    if (payload.count === 0) {
-      $('kpis').innerHTML = '';
-      $('empty-state').hidden = false;
-      destroyCharts();
-      $('theme-grid').innerHTML = '';
-      $('question-groups').innerHTML = '';
-      $('demo-charts').innerHTML = '';
-      $('responses-tbody').innerHTML = '';
-      $('no-responses').hidden = true; // the global #empty-state covers count===0
-      state.renderedTabs.clear();
-      return;
-    }
-
-    $('empty-state').hidden = true;
-    renderKpis();
-    // Charts are rendered lazily per tab: building a Chart.js chart inside a
-    // display:none tab makes it size to 0px. We destroy everything and (re)build
-    // only the visible tab; other tabs build the first time they're shown.
     destroyCharts();
     $('theme-grid').innerHTML = '';
     $('question-groups').innerHTML = '';
     $('demo-charts').innerHTML = '';
     $('responses-tbody').innerHTML = '';
+    $('no-responses').hidden = true;
     state.renderedTabs.clear();
+
+    if (payload.count === 0) {
+      $('kpis').innerHTML = '';
+    } else {
+      renderKpis();
+    }
+    // Empty-state only for a current-round DATA tab with no responses.
+    $('empty-state').hidden = !(payload.count === 0 && state.activeTab !== 'history');
     renderTab(state.activeTab);
+  }
+
+  function activateTab(tab) {
+    tabs.forEach((t) => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.tabpane').forEach((p) => p.classList.remove('active'));
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    const name = tab.dataset.tab;
+    $('tab-' + name).classList.add('active');
+    $('legend').style.display = name === 'themes' || name === 'questions' ? '' : 'none';
+    state.activeTab = name;
+    const noData = state.payload && state.payload.count === 0 && !state.viewingRound;
+    $('empty-state').hidden = !(noData && name !== 'history');
+    renderTab(name);
   }
 
   // Render the charts/content for a single tab (idempotent per data load).
   function renderTab(tab) {
+    if (tab === 'history') return renderHistory(); // independent of current-round data
     if (!state.scores || !state.payload || state.payload.count === 0) return;
     if (state.renderedTabs.has(tab)) return;
     if (tab === 'themes') renderThemes();
@@ -264,6 +281,7 @@
       grid.className = 'donut-grid';
       theme.questions.forEach((q) => {
         const qs = state.scores.perQuestion.find((x) => x.id === q.id);
+        if (!qs) return; // archived round may not contain a later-added question
         const card = document.createElement('div');
         card.className = 'donut-card';
         card.innerHTML = `
@@ -679,26 +697,214 @@
   }
 
   // -------------------------------------------------------------------------
+  //  History (archived survey rounds)
+  // -------------------------------------------------------------------------
+  function defaultRoundLabel() {
+    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  function fmtRoundDate(iso) {
+    return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function histMsg(text, isError) {
+    const el = $('archive-msg');
+    el.textContent = text;
+    el.style.color = isError ? 'var(--bad)' : 'var(--ok)';
+  }
+  function yearOf(s) {
+    return new Date(s.date).getFullYear();
+  }
+
+  function buildSeries(rounds) {
+    const series = rounds.map((r) => ({
+      id: r.id, label: r.label, date: r.archived_at,
+      respondents: r.respondents, summary: r.summary, live: false,
+    }));
+    if (!state.viewingRound && state.payload && state.payload.count > 0 && state.scores) {
+      series.push({
+        id: 'current', label: 'Current (live)', date: new Date().toISOString(),
+        respondents: state.payload.count, summary: state.scores, live: true,
+      });
+    }
+    return series;
+  }
+
+  async function renderHistory() {
+    const rounds = (await api.getRounds()) || [];
+    state.rounds = rounds;
+    const series = buildSeries(rounds);
+    populateYearFilter(series);
+    const shown = filterByYear(series);
+    renderTrendChart(shown);
+    renderComparisonTable(shown);
+    renderRoundList(series);
+  }
+
+  function populateYearFilter(series) {
+    const sel = $('hist-year');
+    const years = [...new Set(series.map(yearOf))].sort();
+    const want =
+      '<option value="">All years</option>' + years.map((y) => `<option value="${y}">${y}</option>`).join('');
+    if (sel.innerHTML !== want) sel.innerHTML = want;
+    sel.value = state.histYear || '';
+  }
+  function filterByYear(series) {
+    if (!state.histYear) return series;
+    return series.filter((s) => String(yearOf(s)) === String(state.histYear) || s.live);
+  }
+
+  function renderTrendChart(series) {
+    if (state.histChart) {
+      try { state.histChart.destroy(); } catch (_) {}
+      state.histChart = null;
+    }
+    const canvas = $('hist-trend-canvas');
+    if (!series.length || typeof Chart === 'undefined') return;
+    state.histChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: series.map((s) => s.label),
+        datasets: [{
+          label: 'Overall satisfaction %',
+          data: series.map((s) => Math.round(s.summary.overall.headline * 10) / 10),
+          borderColor: '#0d7d72',
+          backgroundColor: 'rgba(13,125,114,0.12)',
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: '#0d7d72',
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.parsed.y + '%' } } },
+      },
+    });
+  }
+
+  function cmpCell(v, prev) {
+    if (v == null) return '<td class="val">—</td>';
+    const cur = Math.round(v);
+    let delta = '';
+    if (prev != null) {
+      const diff = cur - Math.round(prev);
+      if (diff > 0) delta = ` <span class="delta-up">▲${diff}</span>`;
+      else if (diff < 0) delta = ` <span class="delta-down">▼${Math.abs(diff)}</span>`;
+    }
+    return `<td class="val">${cur}%${delta}</td>`;
+  }
+
+  function renderComparisonTable(series) {
+    const table = $('hist-compare');
+    if (!series.length) {
+      table.innerHTML = '<tbody><tr><td class="hist-empty">No rounds yet.</td></tr></tbody>';
+      return;
+    }
+    const themes = series[series.length - 1].summary.perTheme;
+    const head = '<tr><th>Theme</th>' + series.map((s) => `<th>${escapeHtml(s.label)}</th>`).join('') + '</tr>';
+    let body = '<tr class="overall-row"><td>Overall satisfaction</td>';
+    series.forEach((s, j) => {
+      body += cmpCell(s.summary.overall.headline, j > 0 ? series[j - 1].summary.overall.headline : null);
+    });
+    body += '</tr>';
+    themes.forEach((t) => {
+      body += `<tr><td>${escapeHtml(t.id)}. ${escapeHtml(t.title)}</td>`;
+      series.forEach((s, j) => {
+        const cur = s.summary.perTheme.find((x) => x.id === t.id);
+        const prev = j > 0 ? series[j - 1].summary.perTheme.find((x) => x.id === t.id) : null;
+        body += cmpCell(cur ? cur.positiveRate : null, prev ? prev.positiveRate : null);
+      });
+      body += '</tr>';
+    });
+    table.innerHTML = '<thead>' + head + '</thead><tbody>' + body + '</tbody>';
+  }
+
+  function renderRoundList(series) {
+    const wrap = $('hist-rounds');
+    if (!series.length) {
+      wrap.innerHTML = '<div class="hist-empty">No rounds yet. Archive the current round to begin building history.</div>';
+      return;
+    }
+    wrap.innerHTML = '';
+    [...series].reverse().forEach((s) => {
+      const row = document.createElement('div');
+      row.className = 'hist-round-row';
+      row.innerHTML =
+        `<span class="hr-when">${escapeHtml(s.label)} ${s.live ? '<span class="hr-live">LIVE</span>' : ''}</span>` +
+        `<span class="hr-date">${s.live ? 'now' : fmtRoundDate(s.date)}</span>` +
+        `<span class="hr-n">${s.respondents} responses</span>` +
+        `<span class="hr-pct">${Scoring.fmtPct(s.summary.overall.headline, 0)}</span>`;
+      if (!s.live) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm';
+        btn.style.marginLeft = '12px';
+        btn.textContent = 'View';
+        btn.addEventListener('click', () => enterRoundView(s));
+        row.appendChild(btn);
+      }
+      wrap.appendChild(row);
+    });
+  }
+
+  async function archiveCurrentRound() {
+    if (state.viewingRound) return;
+    if (!state.payload || state.payload.count === 0) {
+      histMsg('Nothing to archive — the current round has no responses yet.', true);
+      return;
+    }
+    const label = window.prompt(
+      'Name this survey round (e.g. a month/period). It is saved to History and the current round resets for the next period.',
+      defaultRoundLabel()
+    );
+    if (label === null) return;
+    const btn = $('archive-round-btn');
+    btn.disabled = true;
+    btn.textContent = 'Archiving…';
+    const r = await api.archiveRound((label || '').trim());
+    btn.disabled = false;
+    btn.textContent = '📦 Archive current round & start new';
+    if (!r.ok) {
+      histMsg('Could not archive: ' + (r.error || 'please try again'), true);
+      return;
+    }
+    histMsg('Saved “' + (r.label || label) + '” to History. The current round is reset for the next period.', false);
+    await loadAndRender(false);
+    renderHistory();
+  }
+
+  function enterRoundView(item) {
+    stopPolling();
+    destroyCharts();
+    state.viewingRound = item;
+    state.scores = item.summary;
+    state.payload = { count: item.respondents, status: 'archived', headcount: null, responses: [] };
+    state.renderedTabs.clear();
+    $('round-view-label').textContent = item.label;
+    $('round-view-banner').hidden = false;
+    $('tab-btn-responses').style.display = 'none'; // no individual records for archived rounds
+    $('empty-state').hidden = true;
+    $('live-n').textContent = item.respondents;
+    $('live-lbl').textContent = 'responses in this round';
+    const chip = $('status-chip');
+    chip.textContent = 'Archived';
+    chip.className = 'chip';
+    $('updated-at').textContent = fmtRoundDate(item.date);
+    renderKpis();
+    activateTab($('tab-btn-themes'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function exitRoundView() {
+    state.viewingRound = null;
+    $('round-view-banner').hidden = true;
+    $('tab-btn-responses').style.display = '';
+    await loadAndRender(false);
+    startPolling();
+    activateTab($('tab-btn-history'));
+  }
+
+  // -------------------------------------------------------------------------
   //  Static UI wiring (tabs, buttons, modal)
   // -------------------------------------------------------------------------
   function wireStaticUi() {
-    const tabs = [...document.querySelectorAll('.tab')];
-    function activateTab(tab) {
-      tabs.forEach((t) => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      document.querySelectorAll('.tabpane').forEach((p) => p.classList.remove('active'));
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      const name = tab.dataset.tab;
-      $('tab-' + name).classList.add('active');
-      $('legend').style.display = name === 'demographics' || name === 'responses' ? 'none' : '';
-      state.activeTab = name;
-      // Build this tab's charts the first time it becomes visible (so the
-      // container has real dimensions).
-      renderTab(name);
-    }
+    tabs = [...document.querySelectorAll('.tab')];
     tabs.forEach((tab, i) => {
       tab.addEventListener('click', () => activateTab(tab));
       tab.addEventListener('keydown', (e) => {
@@ -709,6 +915,14 @@
         next.focus();
         activateTab(next);
       });
+    });
+
+    // History controls.
+    $('archive-round-btn').addEventListener('click', archiveCurrentRound);
+    $('round-view-back').addEventListener('click', exitRoundView);
+    $('hist-year').addEventListener('change', () => {
+      state.histYear = $('hist-year').value;
+      renderHistory();
     });
 
     $('modal-close').addEventListener('click', closeModal);

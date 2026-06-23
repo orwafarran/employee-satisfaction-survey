@@ -54,6 +54,15 @@ async function init() {
       value  TEXT NOT NULL
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rounds (
+      id           BIGSERIAL PRIMARY KEY,
+      label        TEXT NOT NULL,
+      archived_at  TEXT NOT NULL,
+      respondents  INTEGER NOT NULL,
+      summary_json TEXT NOT NULL
+    )
+  `);
 }
 
 async function getSetting(key, fallback = null) {
@@ -122,6 +131,33 @@ async function clearResponses() {
   await pool.query('TRUNCATE responses RESTART IDENTITY');
 }
 
+// --- Rounds (archived survey periods) ---------------------------------------
+async function listRounds() {
+  const { rows } = await pool.query(
+    'SELECT id, label, archived_at, respondents, summary_json FROM rounds ORDER BY archived_at ASC, id ASC'
+  );
+  return rows.map((r) => ({
+    id: Number(r.id),
+    label: r.label,
+    archived_at: r.archived_at,
+    respondents: Number(r.respondents),
+    summary: JSON.parse(r.summary_json),
+  }));
+}
+
+async function insertRound({ label, archived_at, respondents, summary }) {
+  const { rows } = await pool.query(
+    'INSERT INTO rounds (label, archived_at, respondents, summary_json) VALUES ($1, $2, $3, $4) RETURNING id',
+    [label, archived_at, respondents, JSON.stringify(summary)]
+  );
+  return Number(rows[0].id);
+}
+
+async function countRounds() {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM rounds');
+  return rows[0].n;
+}
+
 module.exports = {
   label: 'PostgreSQL (Azure)',
   pool,
@@ -133,4 +169,7 @@ module.exports = {
   countResponses,
   lastSubmittedAt,
   clearResponses,
+  listRounds,
+  insertRound,
+  countRounds,
 };

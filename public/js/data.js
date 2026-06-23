@@ -132,6 +132,20 @@
       });
       return { ok };
     },
+
+    // --- History: archived survey rounds ----------------------------------
+    async getRounds() {
+      const { ok, body } = await jsonFetch('/api/admin/rounds', { method: 'GET' });
+      return ok && body ? body.rounds || [] : [];
+    },
+
+    async archiveRound(label) {
+      const { ok, body } = await jsonFetch('/api/admin/rounds/archive', {
+        method: 'POST',
+        body: JSON.stringify({ label }),
+      });
+      return ok ? { ok: true, ...body } : { ok: false, error: body && body.error };
+    },
   };
 
   // -------------------------------------------------------------------------
@@ -141,7 +155,40 @@
     extra: 'ess_demo_extra_responses',
     status: 'ess_demo_status',
     overrides: 'ess_survey_overrides',
+    rounds: 'ess_demo_rounds',
   };
+
+  // Produce a lower-positive-rate variant of a computed summary (moves a
+  // fraction of Agree/Strongly-Agree into Disagree), used only to seed a couple
+  // of earlier demo rounds so History shows a realistic upward trend.
+  function scaleCounts(counts, drop) {
+    const [sd, d, a, sa] = counts;
+    const move = Math.round((a + sa) * drop);
+    const fromA = Math.min(a, Math.round(move * 0.6));
+    const fromSA = Math.min(sa, move - fromA);
+    return [sd, d + fromA + fromSA, a - fromA, sa - fromSA];
+  }
+  function scaleStats(item, drop) {
+    return Object.assign({}, item, window.Scoring.statsFromCounts(scaleCounts(item.counts, drop)));
+  }
+  function scaleSummary(summary, drop) {
+    const s = JSON.parse(JSON.stringify(summary));
+    const oc = scaleCounts(s.overall.counts, drop);
+    const st = window.Scoring.statsFromCounts(oc);
+    s.overall.counts = oc;
+    s.overall.totalAnswers = st.total;
+    s.overall.positiveCount = st.positive;
+    s.overall.avgRating = st.avgRating;
+    s.overall.satisfactionIndex = st.satisfactionIndex;
+    s.overall.positiveRateOfAnswered = st.positiveRate;
+    s.overall.clientPositiveRate = s.overall.questionCount
+      ? (st.positive / (s.respondents * s.overall.questionCount)) * 100
+      : st.positiveRate;
+    s.overall.headline = s.overall.clientPositiveRate;
+    s.perTheme = s.perTheme.map((t) => scaleStats(t, drop));
+    s.perQuestion = s.perQuestion.map((q) => scaleStats(q, drop));
+    return s;
+  }
 
   const DemoBackend = {
     mode: 'demo',
@@ -222,6 +269,51 @@
       return { ok: true };
     },
 
+    // --- History: archived survey rounds (localStorage) -------------------
+    async getRounds() {
+      let rounds = null;
+      try {
+        rounds = JSON.parse(localStorage.getItem(LS_KEYS.rounds) || 'null');
+      } catch (_) {
+        rounds = null;
+      }
+      if (!rounds) {
+        rounds = await this._seedDemoRounds();
+        localStorage.setItem(LS_KEYS.rounds, JSON.stringify(rounds));
+      }
+      return rounds;
+    },
+
+    async _seedDemoRounds() {
+      const content = await this._loadContent();
+      const base = (window.DEMO_SAMPLE && window.DEMO_SAMPLE.responses) || [];
+      const current = window.Scoring.compute(base, content);
+      // Two earlier rounds (lower) so the demo shows an upward trend over time.
+      const r1 = scaleSummary(current, 0.1);
+      const r2 = scaleSummary(current, 0.05);
+      return [
+        { id: 1, label: 'Original survey (baseline)', archived_at: '2024-06-01T00:00:00.000Z', respondents: r1.respondents, summary: r1 },
+        { id: 2, label: 'Mid-year review', archived_at: '2025-06-01T00:00:00.000Z', respondents: r2.respondents, summary: r2 },
+      ];
+    },
+
+    async archiveRound(label) {
+      const content = await this._loadContent();
+      const summary = window.Scoring.compute(this._allResponses(), content);
+      const rounds = await this.getRounds();
+      const id = (rounds.reduce((m, r) => Math.max(m, r.id), 0) || 0) + 1;
+      rounds.push({
+        id,
+        label: label || 'Round ' + id,
+        archived_at: new Date().toISOString(),
+        respondents: summary.respondents,
+        summary,
+      });
+      localStorage.setItem(LS_KEYS.rounds, JSON.stringify(rounds));
+      localStorage.removeItem(LS_KEYS.extra); // reset live extras for the next round
+      return { ok: true, id, label, demo: true };
+    },
+
     async submitResponse(payload) {
       if (this._status() === 'closed') return { ok: false, closed: true };
       // Demo: persist to localStorage only so the live count ticks during a demo.
@@ -290,6 +382,7 @@
       localStorage.removeItem(LS_KEYS.extra);
       localStorage.removeItem(LS_KEYS.status);
       localStorage.removeItem(LS_KEYS.overrides);
+      localStorage.removeItem(LS_KEYS.rounds);
     },
   };
 

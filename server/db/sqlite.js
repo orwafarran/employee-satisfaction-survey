@@ -44,6 +44,13 @@ async function init() {
       key    TEXT PRIMARY KEY,
       value  TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS rounds (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      label        TEXT NOT NULL,
+      archived_at  TEXT NOT NULL,
+      respondents  INTEGER NOT NULL,
+      summary_json TEXT NOT NULL
+    );
   `);
 }
 
@@ -117,6 +124,31 @@ async function clearResponses() {
   conn().exec("DELETE FROM sqlite_sequence WHERE name='responses';");
 }
 
+// --- Rounds (archived survey periods) ---------------------------------------
+async function listRounds() {
+  return conn()
+    .prepare('SELECT id, label, archived_at, respondents, summary_json FROM rounds ORDER BY archived_at ASC, id ASC')
+    .all()
+    .map((r) => ({
+      id: Number(r.id),
+      label: r.label,
+      archived_at: r.archived_at,
+      respondents: Number(r.respondents),
+      summary: JSON.parse(r.summary_json),
+    }));
+}
+
+async function insertRound({ label, archived_at, respondents, summary }) {
+  const info = conn()
+    .prepare('INSERT INTO rounds (label, archived_at, respondents, summary_json) VALUES (?, ?, ?, ?)')
+    .run(label, archived_at, respondents, JSON.stringify(summary));
+  return Number(info.lastInsertRowid);
+}
+
+async function countRounds() {
+  return conn().prepare('SELECT COUNT(*) AS n FROM rounds').get().n;
+}
+
 module.exports = {
   label: `SQLite (${DB_PATH})`,
   init,
@@ -127,4 +159,7 @@ module.exports = {
   countResponses,
   lastSubmittedAt,
   clearResponses,
+  listRounds,
+  insertRound,
+  countRounds,
 };

@@ -91,4 +91,8 @@ module.exports = {
   countResponses: driver.countResponses,
   lastSubmittedAt: driver.lastSubmittedAt,
   clearResponses: driver.clearResponses,
+  // rounds (archived survey periods)
+  listRounds: driver.listRounds,
+  insertRound: driver.insertRound,
+  countRounds: driver.countRounds,
 };

@@ -21,6 +21,7 @@ const helmet = require('helmet');
 const db = require('./db');
 const { baseSurvey, buildEffective, SurveyConfig, validateResponse } = require('./survey');
 const { provider, requireAdmin } = require('./auth');
+const Scoring = require('../public/js/scoring.js');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -58,6 +59,30 @@ function primaryNetworkUrl() {
 function parseHeadcount() {
   const n = Number(process.env.SURVEY_HEADCOUNT);
   return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function defaultRoundLabel() {
+  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// Seed the "baseline" round = the client's original Excel survey (real 84.4%
+// distribution), so History opens with something to compare against. Runs once
+// on a fresh database.
+async function seedBaselineRound() {
+  if ((await db.countRounds()) > 0) return;
+  try {
+    const { generate } = require('../scripts/lib/sample-generator');
+    const { responses } = generate();
+    const summary = Scoring.compute(responses, baseSurvey);
+    await db.insertRound({
+      label: process.env.BASELINE_LABEL || 'Original survey (baseline)',
+      archived_at: process.env.BASELINE_DATE || '2024-06-01T00:00:00.000Z',
+      respondents: summary.respondents,
+      summary,
+    });
+  } catch (e) {
+    console.warn('[server] baseline round seed skipped:', e.message);
+  }
 }
 
 app.set('trust proxy', 1); // honour X-Forwarded-* when behind a cloud proxy
@@ -302,6 +327,38 @@ function registerRoutes() {
     })
   );
 
+  // ---- History: archived survey rounds ------------------------------------
+
+  app.get(
+    '/api/admin/rounds',
+    requireAdmin,
+    ah(async (req, res) => {
+      res.json({ rounds: await db.listRounds() });
+    })
+  );
+
+  // Archive the current round (snapshot its computed results) and reset for the
+  // next survey period.
+  app.post(
+    '/api/admin/rounds/archive',
+    requireAdmin,
+    ah(async (req, res) => {
+      const responses = await db.getAllResponses();
+      if (responses.length === 0) return res.status(400).json({ error: 'no_responses' });
+      const label = ((req.body && req.body.label) || '').trim() || defaultRoundLabel();
+      const summary = Scoring.compute(responses, await effectiveSurvey());
+      const archivedAt = new Date().toISOString();
+      const id = await db.insertRound({
+        label,
+        archived_at: archivedAt,
+        respondents: responses.length,
+        summary,
+      });
+      await db.clearResponses();
+      res.status(201).json({ ok: true, id, label, archived_at: archivedAt });
+    })
+  );
+
   // ---- Static frontend -----------------------------------------------------
   app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
   app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
@@ -318,8 +375,9 @@ function registerRoutes() {
 //  BOOTSTRAP
 // ===========================================================================
 async function start({ listen = true } = {}) {
-  // 1. Database ready (creates tables, seeds defaults).
+  // 1. Database ready (creates tables, seeds defaults + the baseline round).
   await db.init();
+  await seedBaselineRound();
 
   // 2. Session middleware (needs the persisted secret).
   const sessionSecret = process.env.SESSION_SECRET || (await db.getOrCreateSessionSecret());
