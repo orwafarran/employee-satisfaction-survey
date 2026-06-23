@@ -45,6 +45,12 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute must always win, even over component display rules
+   (e.g. .admin-actions uses display:flex). */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

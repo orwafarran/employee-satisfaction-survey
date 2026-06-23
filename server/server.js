@@ -13,6 +13,7 @@
  */
 
 const path = require('path');
+const os = require('os');
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
@@ -31,15 +32,25 @@ const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-// --- Secrets: fail fast in production --------------------------------------
-// Never boot a production deployment on the public dev default — refuse to
-// start so a misconfigured deploy is an obvious error, not a silent auth hole.
-const DEV_SESSION_SECRET = 'dev-only-insecure-secret-change-me';
-const SESSION_SECRET = process.env.SESSION_SECRET || DEV_SESSION_SECRET;
-if (IS_PROD && SESSION_SECRET === DEV_SESSION_SECRET) {
-  throw new Error(
-    'Refusing to start: SESSION_SECRET is unset in production. Set it to a long random value.'
-  );
+// --- Session secret ---------------------------------------------------------
+// An explicit SESSION_SECRET wins (cloud deployments). Otherwise the app
+// generates a strong random secret on first run and persists it in the local
+// database — so the run-on-my-own-PC setup is secure with zero configuration.
+const SESSION_SECRET = process.env.SESSION_SECRET || db.getOrCreateSessionSecret();
+
+// LAN addresses of this machine, so we can hand staff a clickable link.
+function lanUrls(port) {
+  const urls = [];
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const ni of ifaces[name] || []) {
+      if (ni.family === 'IPv4' && !ni.internal) urls.push(`http://${ni.address}:${port}`);
+    }
+  }
+  return urls;
+}
+function primaryNetworkUrl() {
+  return lanUrls(PORT)[0] || null;
 }
 
 app.set('trust proxy', 1); // honour X-Forwarded-* when behind a cloud proxy
@@ -96,6 +107,7 @@ app.get('/api/survey', (req, res) => {
     content: effectiveSurvey(),
     status: db.getSurveyStatus(),
     headcount: parseHeadcount(),
+    networkUrl: primaryNetworkUrl(),
   });
 });
 
@@ -159,6 +171,23 @@ app.post('/api/admin/login', loginThrottle, (req, res) => {
   });
 });
 
+// First-run setup: create the single admin account (email + password). Only
+// works while no account exists yet; afterwards it's a no-op (409).
+app.post('/api/admin/setup', loginThrottle, (req, res) => {
+  if (provider.name !== 'local' || typeof provider.setup !== 'function') {
+    return res.status(400).json({ error: 'setup_unsupported' });
+  }
+  if (provider.isConfigured()) return res.status(409).json({ error: 'already_configured' });
+  const { email, password } = req.body || {};
+  const result = provider.setup(email, password);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'session_error' });
+    req.session.admin = result.user;
+    res.status(201).json({ ok: true, user: result.user });
+  });
+});
+
 app.post('/api/admin/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('ess.sid');
@@ -172,6 +201,7 @@ app.get('/api/admin/session', (req, res) => {
     authenticated: Boolean(admin),
     user: admin || null,
     provider: provider.name,
+    configured: typeof provider.isConfigured === 'function' ? provider.isConfigured() : true,
   });
 });
 
@@ -270,12 +300,21 @@ function parseHeadcount() {
 
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`\n  Employee Satisfaction Survey running`);
-    console.log(`  ─────────────────────────────────────`);
-    console.log(`  Public survey form :  http://localhost:${PORT}/`);
-    console.log(`  Admin dashboard    :  http://localhost:${PORT}/admin`);
-    console.log(`  Auth provider      :  ${provider.name}`);
-    console.log(`  Database           :  ${db.DB_PATH}\n`);
+    const net = lanUrls(PORT);
+    console.log(`\n  ============================================================`);
+    console.log(`   Employee Satisfaction Survey is RUNNING. Keep this window open.`);
+    console.log(`  ============================================================\n`);
+    console.log(`   YOU (admin) — open the dashboard on this PC:`);
+    console.log(`       http://localhost:${PORT}/admin\n`);
+    if (net.length) {
+      console.log(`   STAFF — email them this survey link (same office network):`);
+      net.forEach((u) => console.log(`       ${u}/`));
+    } else {
+      console.log(`   Survey link (no network detected):  http://localhost:${PORT}/`);
+    }
+    console.log(`\n   To stop the app: just close this window.`);
+    console.log(`  ------------------------------------------------------------`);
+    console.log(`   responses saved in: ${db.DB_PATH}\n`);
   });
 }
 

@@ -1,0 +1,64 @@
+============================================================
+ EMPLOYEE SATISFACTION SURVEY  —  HOW TO START (Windows)
+============================================================
+
+You only need to do STEP 1 one time. After that, it is just
+double-click and go.
+
+------------------------------------------------------------
+ STEP 1  (one time only):  Install Node.js
+------------------------------------------------------------
+ 1. Go to:   https://nodejs.org
+ 2. Click the big green button that says "LTS".
+ 3. Open the file it downloads and click Next, Next, Install.
+ (If Node.js is already installed, skip this step.)
+
+------------------------------------------------------------
+ STEP 2:  Start the app
+------------------------------------------------------------
+ Double-click the file named:   start.bat
+ A black window opens. The FIRST time it may take a few
+ minutes to get ready. Keep that black window open.
+ Your dashboard opens automatically in the browser.
+
+------------------------------------------------------------
+ STEP 3:  Create your login (first time only)
+------------------------------------------------------------
+ The dashboard asks you to create your admin login.
+ Type your email and a password (8+ characters). Done.
+ Next time, you just sign in with the same email + password.
+
+------------------------------------------------------------
+ STEP 4:  Send the survey to your staff
+------------------------------------------------------------
+ The black window shows a line like:
+      STAFF — email them this survey link:
+          http://192.168.x.x:3000/
+ Copy that link (or click "Copy survey link" in the
+ dashboard) and paste it into a normal Outlook email to
+ your staff. When they open it, they answer the survey.
+
+------------------------------------------------------------
+ WATCHING THE RESULTS
+------------------------------------------------------------
+ The dashboard updates by itself as people answer.
+ It starts empty and fills in live. Charts, scores and the
+ overall % all calculate automatically. Use the Excel / PDF
+ buttons to download a report any time.
+
+------------------------------------------------------------
+ TO STOP THE APP
+------------------------------------------------------------
+ Just close the black window.
+ (While collecting answers, leave the PC on and the window
+  open, otherwise staff cannot reach the link.)
+
+------------------------------------------------------------
+ IMPORTANT
+------------------------------------------------------------
+ * Staff must be on the SAME office network/Wi-Fi as this PC
+   to open the link. (If some staff are remote, tell Orwa and
+   we will host it online instead.)
+ * Answers are anonymous — no names are ever collected.
+
+ Need help? Contact Orwa.

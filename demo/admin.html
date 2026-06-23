@@ -30,6 +30,30 @@
     </div>
   </header>
 
+  <!-- FIRST-RUN SETUP -->
+  <main class="login-wrap" id="setup-view" hidden>
+    <div class="card">
+      <h1>Welcome — set up your admin login</h1>
+      <p class="sub">One-time setup. Create the login you'll use to open this dashboard. Keep it private — only you should have it.</p>
+      <form id="setup-form">
+        <div class="field">
+          <label for="setup-email">Your email</label>
+          <input type="email" id="setup-email" name="email" autocomplete="username" placeholder="you@company.com" required />
+        </div>
+        <div class="field">
+          <label for="setup-password">Choose a password <span style="color:var(--muted);font-weight:500">(at least 8 characters)</span></label>
+          <input type="password" id="setup-password" name="password" autocomplete="new-password" required />
+        </div>
+        <div class="field">
+          <label for="setup-password2">Confirm password</label>
+          <input type="password" id="setup-password2" name="password2" autocomplete="new-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="setup-btn">Create account &amp; sign in</button>
+        <div class="login-error" id="setup-error" hidden></div>
+      </form>
+    </div>
+  </main>
+
   <!-- LOGIN -->
   <main class="login-wrap" id="login-view" hidden>
     <div class="card">

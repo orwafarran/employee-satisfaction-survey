@@ -30,8 +30,58 @@
     const session = await api.getSession();
     if (session.authenticated) {
       await enterDashboard();
+    } else if (session.configured === false) {
+      showSetup();
     } else {
       showLogin(session.provider);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  //  First-run setup (create the single admin account)
+  // -------------------------------------------------------------------------
+  function showSetup() {
+    $('setup-view').hidden = false;
+    $('login-view').hidden = true;
+    $('dash-view').hidden = true;
+    $('admin-actions').hidden = true;
+    $('setup-form').addEventListener('submit', handleSetup);
+  }
+
+  async function handleSetup(e) {
+    e.preventDefault();
+    const err = $('setup-error');
+    err.hidden = true;
+    const email = $('setup-email').value.trim();
+    const pw = $('setup-password').value;
+    const pw2 = $('setup-password2').value;
+    if (pw.length < 8) {
+      err.textContent = 'Password must be at least 8 characters.';
+      err.hidden = false;
+      return;
+    }
+    if (pw !== pw2) {
+      err.textContent = 'The two passwords do not match.';
+      err.hidden = false;
+      return;
+    }
+    const btn = $('setup-btn');
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+    const r = await api.setup(email, pw);
+    if (r.ok) {
+      $('setup-view').hidden = true;
+      await enterDashboard();
+    } else {
+      err.textContent =
+        r.error === 'invalid_email'
+          ? 'Please enter a valid email address.'
+          : r.error === 'weak_password'
+          ? 'Password must be at least 8 characters.'
+          : 'Could not create the account. Please try again.';
+      err.hidden = false;
+      btn.disabled = false;
+      btn.textContent = 'Create account & sign in';
     }
   }
 
@@ -83,6 +133,7 @@
 
     const survey = await api.getSurvey();
     state.content = survey.content;
+    state.networkUrl = survey.networkUrl || null;
     Scoring.flatQuestions(state.content).forEach((q) => {
       state.questionIndex[q.id] = { text: q.text, themeId: q.themeId };
     });
@@ -667,6 +718,9 @@
   }
 
   function surveyFormUrl() {
+    // Prefer the LAN URL the server detected, so the copied link works for
+    // staff on the office network (not "localhost", which only works on the PC).
+    if (state.networkUrl) return state.networkUrl.replace(/\/+$/, '') + '/';
     const u = new URL(location.href);
     u.search = '';
     u.hash = '';

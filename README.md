@@ -29,6 +29,24 @@ until the host is confirmed — see [`docs/IT-DEPLOYMENT-GUIDE.md`](docs/IT-DEPL
 
 ---
 
+## Run it for real on a Windows PC (the client setup — no command line)
+
+For the client running the app on their own PC:
+
+1. Install **Node.js** once — <https://nodejs.org> → green **LTS** button → Next / Next / Install.
+2. Double-click **`start.bat`** in this folder. A window opens; the dashboard opens in the browser.
+3. **First run:** create your admin login (your email + a password). It's hashed and saved locally — no config files, no default password.
+4. Click **Copy survey link** and email it to staff. The app starts **empty** and fills in **live** as answers arrive.
+
+Step-by-step guides for the (non-technical) client are in the folder:
+**`START-HERE.txt`** and **`Survey App - Setup Guide (Windows).docx`**.
+
+> **Network reality:** running on a local PC means staff reach the survey over the
+> **office network/Wi-Fi** while the PC is on. For staff outside the office, host it
+> online instead — see [`docs/IT-DEPLOYMENT-GUIDE.md`](docs/IT-DEPLOYMENT-GUIDE.md).
+
+---
+
 ## Quick start (full local app)
 
 Requires **Node.js ≥ 22.5** (uses the built-in `node:sqlite` — no native build
@@ -40,14 +58,11 @@ npm run seed       # loads 44 sample responses (the client's real distribution)
 npm start          # http://localhost:3000/  and  http://localhost:3000/admin
 ```
 
-**Admin login** (local dev default, printed on boot):
-
-```
-username: admin
-password: survey-admin
-```
-
-Set a real password before any real use — see [Admin authentication](#admin-authentication).
+**Admin login** — the first time you open `/admin`, you create your own login
+(email + password). It's hashed with scrypt and stored in the local database;
+there is no default password and no config file to edit. After that, you just
+sign in. (Advanced/cloud deploys can still pre-seed `ADMIN_USERNAME` +
+`ADMIN_PASSWORD_HASH` — see [Admin authentication](#admin-authentication).)
 
 ### Verify it works
 - Open `http://localhost:3000/` — fill the survey, submit, see the thank-you.

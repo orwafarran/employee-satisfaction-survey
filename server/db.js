@@ -92,6 +92,19 @@ function saveOverrides(overrides) {
   return overrides;
 }
 
+// --- Session secret ---------------------------------------------------------
+// Generate a per-machine random session secret on first run and persist it, so
+// the local app is secure out of the box with no configuration, and sessions
+// survive restarts. (An explicit SESSION_SECRET env var still takes priority.)
+function getOrCreateSessionSecret() {
+  let secret = getSetting('session_secret', null);
+  if (!secret) {
+    secret = require('crypto').randomBytes(32).toString('hex');
+    setSetting('session_secret', secret);
+  }
+  return secret;
+}
+
 // --- Responses --------------------------------------------------------------
 
 const insertStmt = db.prepare(`
@@ -176,6 +189,7 @@ module.exports = {
   setSurveyStatus,
   getOverrides,
   saveOverrides,
+  getOrCreateSessionSecret,
   // responses
   insertResponse,
   getResponseById,
